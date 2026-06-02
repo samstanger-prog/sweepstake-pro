@@ -49,20 +49,6 @@ export default function RulesPage() {
         <RuleRow label="Win World Cup" points={WORLD_CUP_WINNER_BONUS} />
       </section>
 
-      <section className="card text-sm text-slate-600 dark:text-slate-400">
-        <p>
-          <strong className="text-slate-800 dark:text-slate-200">Example:</strong>{" "}
-          A team reaches the Final and wins the World Cup: 10 + 10 + 10 + 10
-          progression (from R16 onward in the 24-team mock), plus{" "}
-          {WORLD_CUP_WINNER_BONUS} winner bonus, plus +1 per goal in every match
-          they played.
-        </p>
-        <p className="mt-2">
-          The current mock tournament has no Round of 32 (starts at Round of
-          16). R32 points apply when the 48-team bracket is added.
-        </p>
-      </section>
-
       <Link
         href="/leaderboard"
         className="block text-center text-pitch-600 hover:underline"
