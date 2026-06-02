@@ -16,6 +16,12 @@ export function Header() {
             Leaderboard
           </Link>
           <Link
+            href="/rules"
+            className="text-slate-600 hover:text-pitch-600 dark:text-slate-300"
+          >
+            Rules
+          </Link>
+          <Link
             href="/admin"
             className="text-slate-600 hover:text-pitch-600 dark:text-slate-300"
           >

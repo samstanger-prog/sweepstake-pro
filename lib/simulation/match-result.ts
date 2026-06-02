@@ -1,5 +1,5 @@
 /** Generate a plausible football score */
-export function generateScore(fast = false, seed?: number): {
+export function generateScore(fast = false): {
   home: number;
   away: number;
 } {
@@ -7,24 +7,15 @@ export function generateScore(fast = false, seed?: number): {
     return { home: 2, away: 1 };
   }
 
-  const rand = seed !== undefined ? seededRandom(seed) : Math.random;
-  const draw = rand() < 0.1;
-  const home = Math.floor(rand() * 5);
-  let away = draw ? home : Math.floor(rand() * 5);
+  const draw = Math.random() < 0.1;
+  const home = Math.floor(Math.random() * 5);
+  let away = draw ? home : Math.floor(Math.random() * 5);
 
   if (!draw && away === home) {
     away = home < 4 ? home + 1 : home - 1;
   }
 
   return { home, away };
-}
-
-function seededRandom(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 1103515 + 12345) & 0x7fffffff;
-    return s / 0x7fffffff;
-  };
 }
 
 export function getWinner(

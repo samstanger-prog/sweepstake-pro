@@ -70,13 +70,11 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Scoring Rules
 
-**Group stage (per match, per team):**
+See **`/rules`** in the app for the full breakdown.
 
-| Event | Points |
-|-------|--------|
-| Goal scored | +1 each |
-| Win | +3 |
-| Draw | +1 |
+**Goals — all stages:** +1 per goal (group and knockout).
+
+**Group stage only:** +3 win, +1 draw.
 
 **Knockout (cumulative — each round the team plays in adds once):**
 
@@ -89,11 +87,13 @@ Open [http://localhost:3000](http://localhost:3000)
 | Final | +10 |
 | Win World Cup | +15 bonus |
 
-Example: R32 → R16 → QF → SF → Final and win = 5+10+10+10+10 + 15 = **60** progression/bonus (plus group points).
+Example: R16 → QF → SF → Final and win = 10+10+10+10 + 15 = **45** progression/bonus (plus +1 per goal in every match).
 
-**24-team mock note:** The mock tournament has no Round of 32 (knockout starts at Round of 16). R32 points apply after the 48-team bracket is added. Re-run simulation in Admin after rule changes.
+**24-team mock note:** No Round of 32 until 48-team expansion. Re-run simulation in Admin after rule changes.
 
-**Simulation:** ~10% forced draws in random mode; use **Fast Simulate** for 2–1 results every match.
+**Simulation:** ~10% forced draws in random mode; use **Fast Simulate** for 2–1 every match.
+
+**Reset:** Admin → Reset tournament (type invite code to confirm) clears draw/scores but keeps players.
 
 ## Deploy on Vercel
 

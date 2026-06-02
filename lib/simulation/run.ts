@@ -54,7 +54,7 @@ async function simulateGroupStage(competitionId: string, fast: boolean) {
   if (error || !matches) throw new Error(error?.message ?? "No matches");
 
   for (const m of matches) {
-    const { home, away } = generateScore(fast, m.fixture_id);
+    const { home, away } = generateScore(fast);
     await supabase
       .from("matches")
       .update({
@@ -170,7 +170,7 @@ async function simulateKnockout(competitionId: string, fast: boolean) {
         continue;
       }
 
-      const { home, away } = generateScore(fast, m.fixture_id);
+      const { home, away } = generateScore(fast);
       const winnerId = getWinner(
         home,
         away,

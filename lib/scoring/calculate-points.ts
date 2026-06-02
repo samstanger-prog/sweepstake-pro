@@ -3,6 +3,7 @@ import {
   GROUP_DRAW_POINTS,
   GROUP_GOAL_POINTS,
   GROUP_WIN_POINTS,
+  KNOCKOUT_GOAL_POINTS,
   KNOCKOUT_ROUND_POINTS,
   KNOCKOUT_ROUNDS_ORDER,
   WORLD_CUP_WINNER_BONUS,
@@ -106,10 +107,19 @@ export function calculateTeamPoints(
   const roundsPlayed = new Set(knockoutMatches.map((m) => m.round));
 
   for (const m of knockoutMatches) {
+    const isHome = m.home_team_id === teamId;
+    const goalsFor = isHome ? m.home_goals! : m.away_goals!;
+    const goalPts = goalsFor * KNOCKOUT_GOAL_POINTS;
     const opponent = opponentName(m, teamId, teamMap);
+    const scoring =
+      goalPts > 0
+        ? ` — ${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalPts}`
+        : "";
+
+    matchPoints += goalPts;
     items.push({
-      description: `${m.round} · ${scoreLine(m, teamId)} vs ${opponent} (${resultLabel(m, teamId)})`,
-      points: 0,
+      description: `${m.round} · ${scoreLine(m, teamId)} vs ${opponent} (${resultLabel(m, teamId)})${scoring}`,
+      points: goalPts,
     });
   }
 

@@ -1,3 +1,4 @@
+import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { CreateCompetitionForm } from "@/components/CreateCompetitionForm";
@@ -124,6 +125,10 @@ export default async function AdminPage() {
           )}
 
           <AdminSimButtons competitionId={latest.id} />
+          <AdminResetTournament
+            competitionId={latest.id}
+            inviteCode={latest.invite_code}
+          />
         </section>
       )}
 

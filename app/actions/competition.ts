@@ -151,6 +151,53 @@ export async function runTeamDraw(competitionId: string) {
   return { success: true, assigned: result.assigned };
 }
 
+export async function resetTournament(
+  competitionId: string,
+  confirmCode: string
+) {
+  if (!(await isAdminAuthenticated())) {
+    return { error: "Unauthorized" };
+  }
+  if (!isSupabaseAdminConfigured()) {
+    return { error: "Database not configured." };
+  }
+
+  const supabase = createAdminClient();
+  const code = confirmCode.trim().toUpperCase();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id, invite_code")
+    .eq("id", competitionId)
+    .single();
+
+  if (!competition) return { error: "Competition not found" };
+  if (competition.invite_code.toUpperCase() !== code) {
+    return { error: "Invite code does not match. Reset cancelled." };
+  }
+
+  await supabase.from("user_teams").delete().eq("competition_id", competitionId);
+  await supabase.from("matches").delete().eq("competition_id", competitionId);
+  await supabase.from("standings").delete().eq("competition_id", competitionId);
+  await supabase
+    .from("participant_scores")
+    .delete()
+    .eq("competition_id", competitionId);
+
+  const { error } = await supabase
+    .from("competitions")
+    .update({ status: "open" })
+    .eq("id", competitionId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/leaderboard");
+  revalidatePath("/c");
+  revalidatePath("/rules");
+  return { success: true };
+}
+
 export async function runSim(competitionId: string, mode: SimMode) {
   if (!(await isAdminAuthenticated())) {
     return { error: "Unauthorized" };
