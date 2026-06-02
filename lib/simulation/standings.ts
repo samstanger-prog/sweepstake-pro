@@ -78,9 +78,11 @@ export function rebuildStandingsFromMatches(
   }));
 }
 
-export function getTopTeamsFromGroups(
+/** Top N per group + best third-placed teams (48-team WC: 12×2 + 8 = 32). */
+export function getQualifiedTeams(
   standings: Omit<Standing, "id" | "competition_id">[],
-  perGroup = 2
+  perGroup = 2,
+  bestThirdCount = 8
 ): string[] {
   const byGroup = new Map<string, typeof standings>();
   for (const s of standings) {
@@ -110,10 +112,19 @@ export function getTopTeamsFromGroups(
     return b.gf - a.gf;
   });
 
-  while (qualified.length < 16 && sortedThird.length > 0) {
+  const target = perGroup * byGroup.size + bestThirdCount;
+  while (qualified.length < target && sortedThird.length > 0) {
     const t = sortedThird.shift();
     if (t && !qualified.includes(t.team_id)) qualified.push(t.team_id);
   }
 
-  return qualified.slice(0, 16);
+  return qualified.slice(0, target);
+}
+
+/** @deprecated use getQualifiedTeams */
+export function getTopTeamsFromGroups(
+  standings: Omit<Standing, "id" | "competition_id">[],
+  perGroup = 2
+): string[] {
+  return getQualifiedTeams(standings, perGroup, 8);
 }

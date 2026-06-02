@@ -1,27 +1,12 @@
+import { WC2026_TEAMS } from "./wc2026-teams";
+
 /** Team definitions mirrored in DB seed — used for fixture generation */
-export const MOCK_TEAMS = [
-  { name: "Brazil", code: "BRA", flag_emoji: "🇧🇷", pot: "A" as const, seed: 1, group_name: "A" },
-  { name: "Argentina", code: "ARG", flag_emoji: "🇦🇷", pot: "A" as const, seed: 2, group_name: "A" },
-  { name: "France", code: "FRA", flag_emoji: "🇫🇷", pot: "A" as const, seed: 3, group_name: "B" },
-  { name: "England", code: "ENG", flag_emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", pot: "A" as const, seed: 4, group_name: "B" },
-  { name: "Spain", code: "ESP", flag_emoji: "🇪🇸", pot: "A" as const, seed: 5, group_name: "C" },
-  { name: "Germany", code: "GER", flag_emoji: "🇩🇪", pot: "A" as const, seed: 6, group_name: "C" },
-  { name: "Portugal", code: "POR", flag_emoji: "🇵🇹", pot: "A" as const, seed: 7, group_name: "D" },
-  { name: "Netherlands", code: "NED", flag_emoji: "🇳🇱", pot: "A" as const, seed: 8, group_name: "D" },
-  { name: "Belgium", code: "BEL", flag_emoji: "🇧🇪", pot: "A" as const, seed: 9, group_name: "E" },
-  { name: "Croatia", code: "CRO", flag_emoji: "🇭🇷", pot: "A" as const, seed: 10, group_name: "E" },
-  { name: "Italy", code: "ITA", flag_emoji: "🇮🇹", pot: "A" as const, seed: 11, group_name: "F" },
-  { name: "Uruguay", code: "URU", flag_emoji: "🇺🇾", pot: "A" as const, seed: 12, group_name: "F" },
-  { name: "Morocco", code: "MAR", flag_emoji: "🇲🇦", pot: "B" as const, seed: 13, group_name: "A" },
-  { name: "Japan", code: "JPN", flag_emoji: "🇯🇵", pot: "B" as const, seed: 14, group_name: "B" },
-  { name: "USA", code: "USA", flag_emoji: "🇺🇸", pot: "B" as const, seed: 15, group_name: "C" },
-  { name: "Mexico", code: "MEX", flag_emoji: "🇲🇽", pot: "B" as const, seed: 16, group_name: "D" },
-  { name: "Switzerland", code: "SUI", flag_emoji: "🇨🇭", pot: "B" as const, seed: 17, group_name: "E" },
-  { name: "Denmark", code: "DEN", flag_emoji: "🇩🇰", pot: "B" as const, seed: 18, group_name: "F" },
-  { name: "Serbia", code: "SRB", flag_emoji: "🇷🇸", pot: "B" as const, seed: 19, group_name: "A" },
-  { name: "Poland", code: "POL", flag_emoji: "🇵🇱", pot: "B" as const, seed: 20, group_name: "B" },
-  { name: "Australia", code: "AUS", flag_emoji: "🇦🇺", pot: "B" as const, seed: 21, group_name: "C" },
-  { name: "Ecuador", code: "ECU", flag_emoji: "🇪🇨", pot: "B" as const, seed: 22, group_name: "D" },
-  { name: "Senegal", code: "SEN", flag_emoji: "🇸🇳", pot: "B" as const, seed: 23, group_name: "E" },
-  { name: "Wales", code: "WAL", flag_emoji: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", pot: "B" as const, seed: 24, group_name: "F" },
-];
+export const MOCK_TEAMS = WC2026_TEAMS.map((t) => ({
+  name: t.name,
+  code: t.code,
+  flag_emoji: t.flag_emoji,
+  pot: "B" as const,
+  seed: t.fifa_rank,
+  group_name: t.group_name,
+  fifa_rank: t.fifa_rank,
+}));

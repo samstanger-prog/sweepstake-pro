@@ -1,35 +1,38 @@
 /**
- * TODO (API-Football / API-Sports — World Cup 2026)
+ * API-Football / API-Sports — FIFA World Cup 2026
  *
  * Guide: https://www.api-football.com/news/post/fifa-world-cup-2026-guide-to-using-data-with-api-sports
  *
- * Integration targets:
- *   - league=1, season=2026
- *   - GET /fixtures?league=1&season=2026  (~104 matches)
- *   - GET /fixtures/rounds?league=1&season=2026  (round name strings)
- *   - GET /standings?league=1&season=2026  (12 groups)
+ * Key identifiers: league=1, season=2026
  *
- * Map API round labels → internal `matches.round` values used in scoring
- * (see KNOCKOUT_ROUNDS_ORDER in lib/scoring/rules.ts).
+ * Endpoints (sync server-side → Supabase; never call per page view):
+ *   GET /leagues?id=1&season=2026           — coverage flags
+ *   GET /teams?league=1&season=2026           — 48 teams (team.id, code, name, logo)
+ *   GET /fixtures?league=1&season=2026        — ~104 fixtures (fixture.id, league.round, goals, status)
+ *   GET /fixtures/rounds?league=1&season=2026 — round names ("Group Stage - 1", …)
+ *   GET /standings?league=1&season=2026       — 12 groups ("Group A", …)
  *
- * Example mappings to verify when implementing ApiFootballProvider:
- *   "Group stage"     → "Group Stage"
- *   "Round of 32"     → "Round of 32"
- *   "Round of 16"     → "Round of 16"
- *   "Quarter-finals"  → "Quarter-final"   (API may use plural / different casing)
- *   "Semi-finals"     → "Semi-final"
- *   "Final"           → "Final"
+ * Live (future cron, ~hourly on free tier): fixtures?league=1&season=2026&status=…
+ * Batch details: fixtures?ids=ID1-ID2-… (max 20 per request)
  *
- * Use coverage flags from GET /leagues before relying on live data.
+ * Map API round labels → internal matches.round (see KNOCKOUT_ROUNDS_ORDER in rules.ts).
  */
 
 export const API_FOOTBALL_WORLD_CUP = {
   leagueId: 1,
   season: 2026,
+  baseUrl: "https://v3.football.api-sports.io",
 } as const;
 
-/** Placeholder — fill when implementing sync from /fixtures/rounds */
-export function normalizeApiRound(apiRound: string): string {
+/** "Group A" → "A" for standings / matches.group_name */
+export function normalizeApiGroup(apiGroup: string): string {
+  const m = apiGroup.match(/Group\s+([A-L])/i);
+  return m ? m[1].toUpperCase() : apiGroup;
+}
+
+/** Map API fixture round string → internal round (null = skip, e.g. unknown). */
+export function normalizeApiRound(apiRound: string): string | null {
+  const trimmed = apiRound.trim();
   const map: Record<string, string> = {
     "Group stage": "Group Stage",
     "Group Stage": "Group Stage",
@@ -40,6 +43,14 @@ export function normalizeApiRound(apiRound: string): string {
     "Semi-finals": "Semi-final",
     "Semi-final": "Semi-final",
     Final: "Final",
+    "3rd Place Final": "Third-place",
+    "Third Place": "Third-place",
+    "Third-place": "Third-place",
   };
-  return map[apiRound] ?? apiRound;
+
+  if (map[trimmed]) return map[trimmed];
+  if (/^Group Stage\s*-\s*\d+$/i.test(trimmed)) return "Group Stage";
+  if (/3rd|third/i.test(trimmed) && /place/i.test(trimmed)) return "Third-place";
+
+  return trimmed;
 }

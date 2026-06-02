@@ -1,16 +1,26 @@
 import type { MockFixtureTemplate } from "@/lib/supabase/types";
+import { WC2026_TEAMS } from "./wc2026-teams";
 
-const GROUPS = ["A", "B", "C", "D", "E", "F"] as const;
+const GROUPS = [
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+] as const;
 
-/** Teams per group (codes) — matches DB seed */
-const GROUP_TEAMS: Record<string, string[]> = {
-  A: ["BRA", "ARG", "MAR", "SRB"],
-  B: ["FRA", "ENG", "JPN", "POL"],
-  C: ["ESP", "GER", "USA", "AUS"],
-  D: ["POR", "NED", "MEX", "ECU"],
-  E: ["BEL", "CRO", "SUI", "SEN"],
-  F: ["ITA", "URU", "DEN", "WAL"],
-};
+const GROUP_TEAMS: Record<string, string[]> = {};
+for (const t of WC2026_TEAMS) {
+  if (!GROUP_TEAMS[t.group_name]) GROUP_TEAMS[t.group_name] = [];
+  GROUP_TEAMS[t.group_name].push(t.code);
+}
 
 function groupFixtures(): MockFixtureTemplate[] {
   const fixtures: MockFixtureTemplate[] = [];
@@ -37,39 +47,78 @@ function groupFixtures(): MockFixtureTemplate[] {
   return fixtures;
 }
 
-/** Knockout bracket: R16 (37-44), QF (45-48), SF (49-50), Final (51) */
+/** Knockout: R32 (16) → R16 (8) → QF (4) → SF (2) → Third-place (1) + Final (1) */
 function knockoutFixtures(startId: number): MockFixtureTemplate[] {
-  const r16: MockFixtureTemplate[] = [
-    { fixture_id: startId, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 1, next_match_fixture_id: startId + 8 },
-    { fixture_id: startId + 1, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 2, next_match_fixture_id: startId + 8 },
-    { fixture_id: startId + 2, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 3, next_match_fixture_id: startId + 9 },
-    { fixture_id: startId + 3, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 4, next_match_fixture_id: startId + 9 },
-    { fixture_id: startId + 4, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 5, next_match_fixture_id: startId + 10 },
-    { fixture_id: startId + 5, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 6, next_match_fixture_id: startId + 10 },
-    { fixture_id: startId + 6, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 7, next_match_fixture_id: startId + 11 },
-    { fixture_id: startId + 7, home_code: "TBD", away_code: "TBD", round: "Round of 16", knockout_order: 8, next_match_fixture_id: startId + 11 },
-  ];
-
-  const qfStart = startId + 8;
-  const qf: MockFixtureTemplate[] = [
-    { fixture_id: qfStart, home_code: "TBD", away_code: "TBD", round: "Quarter-final", knockout_order: 9, next_match_fixture_id: qfStart + 4 },
-    { fixture_id: qfStart + 1, home_code: "TBD", away_code: "TBD", round: "Quarter-final", knockout_order: 10, next_match_fixture_id: qfStart + 4 },
-    { fixture_id: qfStart + 2, home_code: "TBD", away_code: "TBD", round: "Quarter-final", knockout_order: 11, next_match_fixture_id: qfStart + 5 },
-    { fixture_id: qfStart + 3, home_code: "TBD", away_code: "TBD", round: "Quarter-final", knockout_order: 12, next_match_fixture_id: qfStart + 5 },
-  ];
-
+  const fixtures: MockFixtureTemplate[] = [];
+  const r32Start = startId;
+  const r16Start = r32Start + 16;
+  const qfStart = r16Start + 8;
   const sfStart = qfStart + 4;
-  const sf: MockFixtureTemplate[] = [
-    { fixture_id: sfStart, home_code: "TBD", away_code: "TBD", round: "Semi-final", knockout_order: 13, next_match_fixture_id: sfStart + 2 },
-    { fixture_id: sfStart + 1, home_code: "TBD", away_code: "TBD", round: "Semi-final", knockout_order: 14, next_match_fixture_id: sfStart + 2 },
-  ];
+  const thirdStart = sfStart + 2;
+  const finalStart = thirdStart + 1;
+  let order = 1;
 
-  const finalStart = sfStart + 2;
-  const finalF: MockFixtureTemplate[] = [
-    { fixture_id: finalStart, home_code: "TBD", away_code: "TBD", round: "Final", knockout_order: 15 },
-  ];
+  for (let i = 0; i < 16; i++) {
+    fixtures.push({
+      fixture_id: r32Start + i,
+      home_code: "TBD",
+      away_code: "TBD",
+      round: "Round of 32",
+      knockout_order: order++,
+      next_match_fixture_id: r16Start + Math.floor(i / 2),
+    });
+  }
 
-  return [...r16, ...qf, ...sf, ...finalF];
+  for (let i = 0; i < 8; i++) {
+    fixtures.push({
+      fixture_id: r16Start + i,
+      home_code: "TBD",
+      away_code: "TBD",
+      round: "Round of 16",
+      knockout_order: order++,
+      next_match_fixture_id: qfStart + Math.floor(i / 2),
+    });
+  }
+
+  for (let i = 0; i < 4; i++) {
+    fixtures.push({
+      fixture_id: qfStart + i,
+      home_code: "TBD",
+      away_code: "TBD",
+      round: "Quarter-final",
+      knockout_order: order++,
+      next_match_fixture_id: sfStart + Math.floor(i / 2),
+    });
+  }
+
+  for (let i = 0; i < 2; i++) {
+    fixtures.push({
+      fixture_id: sfStart + i,
+      home_code: "TBD",
+      away_code: "TBD",
+      round: "Semi-final",
+      knockout_order: order++,
+      next_match_fixture_id: finalStart,
+    });
+  }
+
+  fixtures.push({
+    fixture_id: thirdStart,
+    home_code: "TBD",
+    away_code: "TBD",
+    round: "Third-place",
+    knockout_order: order++,
+  });
+
+  fixtures.push({
+    fixture_id: finalStart,
+    home_code: "TBD",
+    away_code: "TBD",
+    round: "Final",
+    knockout_order: order++,
+  });
+
+  return fixtures;
 }
 
 const groupFixturesList = groupFixtures();
@@ -78,4 +127,5 @@ export const MOCK_FIXTURES: MockFixtureTemplate[] = [
   ...knockoutFixtures(groupFixturesList.length + 1),
 ];
 
+export const MOCK_FIXTURE_COUNT = MOCK_FIXTURES.length;
 export { GROUP_TEAMS, GROUPS };

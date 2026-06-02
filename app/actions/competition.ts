@@ -148,7 +148,7 @@ export async function runTeamDraw(competitionId: string) {
   if (!result.ok) return { error: result.error };
   revalidatePath("/admin");
   revalidatePath("/leaderboard");
-  return { success: true, assigned: result.assigned };
+  return { success: true, assigned: result.assigned, potAEndRank: result.potAEndRank };
 }
 
 export async function resetTournament(

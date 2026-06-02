@@ -14,16 +14,18 @@ export default function RulesPage() {
       <div>
         <h1 className="text-2xl font-bold">How points work</h1>
         <p className="mt-1 text-slate-600 dark:text-slate-400">
-          Each player gets two teams (Pot A + Pot B). Your total is the sum of
-          both teams.
+          Each player gets two teams at the draw: one from the top-ranked pool
+          (Pot A) and one from the rest (Pot B). With N players, Pot A is the
+          top N FIFA-ranked teams; Pot B is the remaining 48 − N. Your total is
+          the sum of both teams.
         </p>
       </div>
 
       <section className="card space-y-3">
         <h2 className="font-semibold">Goals — all stages</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Every goal your team scores in the group stage or knockout earns
-          points.
+          Every goal your team scores in the group stage, knockout, or
+          third-place match earns points.
         </p>
         <RuleRow label="Goal scored" points={GOAL_POINTS} suffix="per goal" />
       </section>
@@ -37,7 +39,9 @@ export default function RulesPage() {
       <section className="card space-y-3">
         <h2 className="font-semibold">Knockout — cumulative</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Each knockout round your team completes adds once (they stack).
+          48-team format: 12 groups, Round of 32 through Final. Each knockout
+          round your team completes adds once (they stack). Third-place match:
+          goal points only.
         </p>
         {KNOCKOUT_ROUNDS_ORDER.map((round) => (
           <RuleRow

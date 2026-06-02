@@ -9,6 +9,7 @@ type ActionResult = {
   error?: string;
   success?: boolean;
   assigned?: number;
+  potAEndRank?: number;
 };
 
 export function AdminSimButtons({ competitionId }: { competitionId: string }) {
@@ -30,8 +31,12 @@ export function AdminSimButtons({ competitionId }: { competitionId: string }) {
       if (result.error) {
         setMessage({ text: result.error, type: "error" });
       } else if (result.assigned) {
+        const potNote =
+          result.potAEndRank != null
+            ? ` Pot A = top ${result.assigned} ranked (through #${result.potAEndRank}); Pot B = the other ${48 - result.assigned} teams.`
+            : "";
         setMessage({
-          text: `Team draw complete — ${result.assigned} players assigned.`,
+          text: `Team draw complete — ${result.assigned} players assigned.${potNote}`,
           type: "success",
         });
         router.refresh();

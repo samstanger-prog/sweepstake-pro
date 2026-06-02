@@ -1,15 +1,15 @@
 /**
  * Scoring rules — cumulative knockout milestones (each round played adds its points).
- * Goals (+1 each) apply in ALL stages. Win/draw apply in group stage only.
- * 24-team mock starts at Round of 16 (no R32 fixtures until 48-team expansion).
+ * Goals (+1 each) apply in ALL stages (including third-place match).
+ * Win/draw apply in group stage only. Third-place: goals only, no milestone bonus.
  */
 
-/** +1 per goal in group stage and knockout */
+/** +1 per goal in group stage, knockout, and third-place match */
 export const GOAL_POINTS = 1;
 export const GROUP_GOAL_POINTS = GOAL_POINTS;
 export const KNOCKOUT_GOAL_POINTS = GOAL_POINTS;
 
-/** Knockout rounds in bracket order (48-team World Cup includes Round of 32). */
+/** Knockout rounds that award progression points (third-place excluded). */
 export const KNOCKOUT_ROUNDS_ORDER = [
   "Round of 32",
   "Round of 16",

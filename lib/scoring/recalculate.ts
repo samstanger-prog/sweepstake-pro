@@ -34,7 +34,7 @@ export async function recalculateCompetition(competitionId: string) {
       if (!team) throw new Error("Team not found");
       return calculateTeamPoints(
         ut.team_id,
-        team,
+        { ...team, pot: ut.pot },
         matches as Match[],
         teamMap
       );

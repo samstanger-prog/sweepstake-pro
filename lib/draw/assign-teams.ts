@@ -1,11 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDataProvider } from "@/lib/data";
 import { shuffle } from "@/lib/utils/shuffle";
+import { WC2026_TEAM_COUNT } from "@/lib/mock/wc2026-teams";
+
+const MAX_PLAYERS = 20;
 
 export async function assignTeams(competitionId: string): Promise<{
   ok: boolean;
   error?: string;
   assigned?: number;
+  potAEndRank?: number;
 }> {
   const supabase = createAdminClient();
 
@@ -20,35 +24,42 @@ export async function assignTeams(competitionId: string): Promise<{
   }
 
   const count = participants.length;
-  if (count > 24) {
-    return { ok: false, error: "Too many participants (max 24)" };
+  if (count > MAX_PLAYERS) {
+    return { ok: false, error: `Too many participants (max ${MAX_PLAYERS})` };
   }
-
-  const { data: potA } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("pot", "A")
-    .neq("code", "TBD");
-
-  const { data: potB } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("pot", "B")
-    .neq("code", "TBD");
-
-  if (!potA?.length || !potB?.length) {
-    return { ok: false, error: "Team pool not seeded" };
-  }
-  if (potA.length < count || potB.length < count) {
-    const maxPlayers = Math.min(potA.length, potB.length);
+  if (WC2026_TEAM_COUNT - count < count) {
     return {
       ok: false,
-      error: `Too many players (${count}). Maximum ${maxPlayers} with the current team pool (${potA.length} Pot A, ${potB.length} Pot B). Run migration 003_rebalance_pots.sql in Supabase if you have 9–12 players.`,
+      error: `Not enough teams in Pot B (${WC2026_TEAM_COUNT - count} available, need ${count}). Reduce players or expand the team pool.`,
     };
   }
 
-  const shuffledA = shuffle(potA.map((t) => t.id)).slice(0, count);
-  const shuffledB = shuffle(potB.map((t) => t.id)).slice(0, count);
+  const { data: teams, error: tErr } = await supabase
+    .from("teams")
+    .select("id, fifa_rank, seed")
+    .neq("code", "TBD");
+
+  if (tErr || !teams?.length) {
+    return { ok: false, error: tErr?.message ?? "Team pool not seeded" };
+  }
+
+  const sorted = [...teams].sort((a, b) => {
+    const rankA = a.fifa_rank ?? a.seed;
+    const rankB = b.fifa_rank ?? b.seed;
+    return rankA - rankB;
+  });
+
+  if (sorted.length < WC2026_TEAM_COUNT) {
+    return {
+      ok: false,
+      error: `Expected ${WC2026_TEAM_COUNT} teams in database (found ${sorted.length}). Run migration 004_48_teams.sql.`,
+    };
+  }
+
+  const potAPool = sorted.slice(0, count);
+  const potBPool = sorted.slice(count);
+  const shuffledA = shuffle(potAPool.map((t) => t.id)).slice(0, count);
+  const shuffledB = shuffle(potBPool.map((t) => t.id)).slice(0, count);
 
   await supabase
     .from("user_teams")
@@ -91,5 +102,7 @@ export async function assignTeams(competitionId: string): Promise<{
     };
   }
 
-  return { ok: true, assigned: count };
+  const topRank = potAPool[potAPool.length - 1]?.fifa_rank ?? count;
+
+  return { ok: true, assigned: count, potAEndRank: topRank };
 }

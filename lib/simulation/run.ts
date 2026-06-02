@@ -3,7 +3,7 @@ import { GROUP_TEAMS } from "@/lib/mock/fixtures";
 import { generateScore, getWinner } from "./match-result";
 import {
   rebuildStandingsFromMatches,
-  getTopTeamsFromGroups,
+  getQualifiedTeams,
 } from "./standings";
 import type { Match } from "@/lib/supabase/types";
 import { recalculateCompetition } from "@/lib/scoring/recalculate";
@@ -107,46 +107,76 @@ async function simulateGroupStage(competitionId: string, fast: boolean) {
   await fillKnockoutBracket(competitionId, standings);
 }
 
+/** Top 2 × 12 groups + 8 best thirds → 32 teams into R32 (1 vs 32, 2 vs 31, …). */
 async function fillKnockoutBracket(
   competitionId: string,
   standings: ReturnType<typeof rebuildStandingsFromMatches>
 ) {
   const supabase = createAdminClient();
-  const qualified = getTopTeamsFromGroups(standings, 2);
+  const qualified = getQualifiedTeams(standings, 2, 8);
 
-  const { data: r16 } = await supabase
+  const { data: r32 } = await supabase
     .from("matches")
     .select("*")
     .eq("competition_id", competitionId)
-    .eq("round", "Round of 16")
+    .eq("round", "Round of 32")
     .order("fixture_id");
 
-  if (!r16) return;
+  if (!r32?.length) return;
 
-  const pairs: [string, string][] = [];
-  for (let i = 0; i < 8; i++) {
-    const home = qualified[i] ?? qualified[0];
-    const away = qualified[15 - i] ?? qualified[1];
-    pairs.push([home, away]);
-  }
-
-  for (let i = 0; i < r16.length && i < pairs.length; i++) {
-    const [homeId, awayId] = pairs[i];
+  for (let i = 0; i < r32.length && i < 16; i++) {
+    const homeId = qualified[i] ?? qualified[0];
+    const awayId = qualified[31 - i] ?? qualified[1];
     await supabase
       .from("matches")
       .update({
         home_team_id: homeId,
         away_team_id: awayId,
       })
-      .eq("id", r16[i].id);
+      .eq("id", r32[i].id);
   }
 }
 
 async function simulateKnockout(competitionId: string, fast: boolean) {
   const supabase = createAdminClient();
-  const rounds = ["Round of 16", "Quarter-final", "Semi-final", "Final"];
+  const rounds = [
+    "Round of 32",
+    "Round of 16",
+    "Quarter-final",
+    "Semi-final",
+    "Third-place",
+    "Final",
+  ];
+
+  const { data: tbdTeam } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("code", "TBD")
+    .single();
+
+  const tbdId = tbdTeam?.id;
+  const sfLosers: string[] = [];
 
   for (const round of rounds) {
+    if (round === "Third-place" && sfLosers.length === 2) {
+      const { data: thirdMatch } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("competition_id", competitionId)
+        .eq("round", "Third-place")
+        .single();
+
+      if (thirdMatch) {
+        await supabase
+          .from("matches")
+          .update({
+            home_team_id: sfLosers[0],
+            away_team_id: sfLosers[1],
+          })
+          .eq("id", thirdMatch.id);
+      }
+    }
+
     const { data: matches } = await supabase
       .from("matches")
       .select("*")
@@ -157,15 +187,9 @@ async function simulateKnockout(competitionId: string, fast: boolean) {
     if (!matches) continue;
 
     for (const m of matches) {
-      const { data: tbdTeam } = await supabase
-        .from("teams")
-        .select("id")
-        .eq("code", "TBD")
-        .single();
-
       if (
-        tbdTeam &&
-        (m.home_team_id === tbdTeam.id || m.away_team_id === tbdTeam.id)
+        tbdId &&
+        (m.home_team_id === tbdId || m.away_team_id === tbdId)
       ) {
         continue;
       }
@@ -177,6 +201,8 @@ async function simulateKnockout(competitionId: string, fast: boolean) {
         m.home_team_id,
         m.away_team_id
       );
+      const loserId =
+        winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
 
       await supabase
         .from("matches")
@@ -188,7 +214,11 @@ async function simulateKnockout(competitionId: string, fast: boolean) {
         })
         .eq("id", m.id);
 
-      if (m.next_match_fixture_id && m.knockout_order) {
+      if (round === "Semi-final") {
+        sfLosers.push(loserId);
+      }
+
+      if (m.next_match_fixture_id && m.knockout_order && round !== "Third-place") {
         const { data: nextMatch } = await supabase
           .from("matches")
           .select("*")

@@ -113,7 +113,13 @@ export default async function AdminPage() {
           <h2 className="text-lg font-semibold">Active: {latest.name}</h2>
           <p className="text-sm text-slate-500">Status: {latest.status}</p>
           <InviteCodeCopy code={latest.invite_code} />
-          <p className="text-sm">{participantCount} participants joined</p>
+          <p className="text-sm">{participantCount} participants joined (max 20)</p>
+          {participantCount > 0 && (
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Team draw: Pot A = top {participantCount} FIFA-ranked teams; Pot
+              B = remaining {48 - participantCount} teams (shuffled separately).
+            </p>
+          )}
 
           {roster.length > 0 && (
             <div>

@@ -9,6 +9,8 @@ export interface Team {
   flag_emoji: string;
   pot: Pot;
   seed: number;
+  fifa_rank: number | null;
+  api_team_id: number | null;
   group_name: string | null;
 }
 

@@ -1,20 +1,10 @@
 {
-  "description": "24-team mock World Cup tournament. Fixture templates are generated in lib/mock/fixtures.ts; this file documents structure.",
-  "teams": 24,
-  "groups": ["A", "B", "C", "D", "E", "F"],
-  "groupStageMatches": 36,
-  "knockoutMatches": 15,
-  "exampleFixture": {
-    "fixture_id": 1,
-    "home_team": "Brazil",
-    "away_team": "Argentina",
-    "home_goals": 2,
-    "away_goals": 1,
-    "status": "FT",
-    "round": "Group Stage",
-    "group_name": "A"
-  },
-  "rounds": ["Group Stage", "Round of 16", "Quarter-final", "Semi-final", "Final"],
-  "potA": 8,
-  "potB": 16
+  "description": "48-team FIFA World Cup 2026 mock. Fixture templates in lib/mock/fixtures.ts; teams in lib/mock/wc2026-teams.ts.",
+  "teams": 48,
+  "groups": 12,
+  "group_matches": 72,
+  "knockout_matches": 32,
+  "fixtures": 104,
+  "qualification": "Top 2 per group + 8 best third-placed → Round of 32",
+  "api_football": { "league": 1, "season": 2026 }
 }
