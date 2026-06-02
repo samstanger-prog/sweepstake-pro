@@ -1,0 +1,20 @@
+{
+  "description": "24-team mock World Cup tournament. Fixture templates are generated in lib/mock/fixtures.ts; this file documents structure.",
+  "teams": 24,
+  "groups": ["A", "B", "C", "D", "E", "F"],
+  "groupStageMatches": 36,
+  "knockoutMatches": 15,
+  "exampleFixture": {
+    "fixture_id": 1,
+    "home_team": "Brazil",
+    "away_team": "Argentina",
+    "home_goals": 2,
+    "away_goals": 1,
+    "status": "FT",
+    "round": "Group Stage",
+    "group_name": "A"
+  },
+  "rounds": ["Group Stage", "Round of 16", "Quarter-final", "Semi-final", "Final"],
+  "potA": 8,
+  "potB": 16
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Zeroed standings per group — populated in DB on competition seed",
+  "groups": {
+    "A": ["BRA", "ARG", "MAR", "SRB"],
+    "B": ["FRA", "ENG", "JPN", "POL"],
+    "C": ["ESP", "GER", "USA", "AUS"],
+    "D": ["POR", "NED", "MEX", "ECU"],
+    "E": ["BEL", "CRO", "SUI", "SEN"],
+    "F": ["ITA", "URU", "DEN", "WAL"]
+  },
+  "defaults": {
+    "played": 0,
+    "won": 0,
+    "drawn": 0,
+    "lost": 0,
+    "gf": 0,
+    "ga": 0,
+    "gd": 0,
+    "pts": 0
+  }
+}
