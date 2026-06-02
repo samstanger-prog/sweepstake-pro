@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
+import { PointsBreakdown } from "@/components/PointsBreakdown";
 import { profilePath } from "@/lib/utils/slug";
 import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
 import type { ScoreBreakdown } from "@/lib/supabase/types";
@@ -94,23 +95,11 @@ export function ProfileView({ participant }: { participant: ProfileData }) {
             Match {scores.match_points} · Progression {scores.progression_points}{" "}
             · Bonus {scores.bonus_points}
           </p>
-          {breakdown?.teams?.map((t) => (
-            <div
-              key={t.teamId}
-              className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-600"
-            >
-              <TeamBadge name={t.teamName} flag={t.flagEmoji} pot={t.pot} />
-              <p className="mt-1 text-sm">
-                Total: {t.total} (match {t.matchPoints}, progression{" "}
-                {t.progressionPoints}, bonus {t.bonusPoints})
-              </p>
-              <ul className="mt-1 list-inside list-disc text-xs text-slate-500">
-                {t.details.map((d, i) => (
-                  <li key={i}>{d}</li>
-                ))}
-              </ul>
+          {breakdown?.teams && breakdown.teams.length > 0 && (
+            <div className="mt-4">
+              <PointsBreakdown teams={breakdown.teams} />
             </div>
-          ))}
+          )}
         </section>
       ) : (
         <p className="text-sm text-slate-500">

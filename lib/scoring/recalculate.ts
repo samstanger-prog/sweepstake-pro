@@ -35,7 +35,8 @@ export async function recalculateCompetition(competitionId: string) {
       return calculateTeamPoints(
         ut.team_id,
         team,
-        matches as Match[]
+        matches as Match[],
+        teamMap
       );
     });
 

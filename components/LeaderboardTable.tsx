@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { TeamBadge } from "./TeamBadge";
+import { PointsBreakdown } from "./PointsBreakdown";
 import { ParticipantTeams, type AssignedTeam } from "./ParticipantTeams";
 import type { ScoreBreakdown } from "@/lib/supabase/types";
 
@@ -69,23 +69,8 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
           </button>
 
           {expanded === e.participantId && e.breakdown?.teams && (
-            <div className="mt-3 space-y-3 border-t border-slate-200 pt-3 dark:border-slate-600">
-              {e.breakdown.teams.map((t) => (
-                <div key={t.teamId}>
-                  <TeamBadge name={t.teamName} flag={t.flagEmoji} pot={t.pot} />
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Match: {t.matchPoints} · Progression: {t.progressionPoints}
-                    · Bonus: {t.bonusPoints} · Total: {t.total}
-                  </p>
-                  {t.details.length > 0 && (
-                    <ul className="mt-1 list-inside list-disc text-xs text-slate-500">
-                      {t.details.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
+            <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-600">
+              <PointsBreakdown teams={e.breakdown.teams} />
             </div>
           )}
         </div>

@@ -82,6 +82,11 @@ export interface ScoreBreakdown {
   teams: TeamScoreDetail[];
 }
 
+export interface ScoreDetailItem {
+  description: string;
+  points: number;
+}
+
 export interface TeamScoreDetail {
   teamId: string;
   teamName: string;
@@ -91,7 +96,9 @@ export interface TeamScoreDetail {
   progressionPoints: number;
   bonusPoints: number;
   total: number;
-  details: string[];
+  /** @deprecated use items — kept for old cached breakdowns */
+  details?: string[];
+  items: ScoreDetailItem[];
 }
 
 export interface MockFixtureTemplate {
