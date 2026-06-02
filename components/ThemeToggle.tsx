@@ -29,7 +29,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 transition active:scale-95 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
       aria-label="Toggle dark mode"
     >
       {dark ? "☀️" : "🌙"}

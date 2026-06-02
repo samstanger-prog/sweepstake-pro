@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WC2026_TEAMS } from "@/lib/mock/wc2026-teams";
 import {
   GOAL_POINTS,
   GROUP_DRAW_POINTS,
@@ -8,16 +9,18 @@ import {
   WORLD_CUP_WINNER_BONUS,
 } from "@/lib/scoring/rules";
 
+const RANKED_TEAMS = [...WC2026_TEAMS].sort(
+  (a, b) => a.fifa_rank - b.fifa_rank
+);
+
 export default function RulesPage() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">How points work</h1>
         <p className="mt-1 text-slate-600 dark:text-slate-400">
-          Each player gets two teams at the draw: one from the top-ranked pool
-          (Pot A) and one from the rest (Pot B). With N players, Pot A is the
-          top N FIFA-ranked teams; Pot B is the remaining 48 − N. Your total is
-          the sum of both teams.
+          You get two teams at the draw: one strong team (Pot A) and one from
+          the rest (Pot B). Your score is both teams added together.
         </p>
       </div>
 
@@ -51,6 +54,43 @@ export default function RulesPage() {
           />
         ))}
         <RuleRow label="Win World Cup" points={WORLD_CUP_WINNER_BONUS} />
+      </section>
+
+      <section className="card space-y-3">
+        <div>
+          <h2 className="font-semibold">World Cup 2026 teams (FIFA ranking)</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Rankings as at draw —{" "}
+            <a
+              href="https://inside.fifa.com/fifa-world-ranking/men"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-pitch-600 hover:underline dark:text-pitch-500"
+            >
+              verify on FIFA.com →
+            </a>
+          </p>
+        </div>
+        <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+          {RANKED_TEAMS.map((team) => (
+            <li
+              key={team.code}
+              className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="w-8 shrink-0 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  #{team.fifa_rank}
+                </span>
+                <span className="truncate">
+                  {team.flag_emoji} {team.name}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                Group {team.group_name}
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <Link
