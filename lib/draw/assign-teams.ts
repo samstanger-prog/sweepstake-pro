@@ -40,9 +40,10 @@ export async function assignTeams(competitionId: string): Promise<{
     return { ok: false, error: "Team pool not seeded" };
   }
   if (potA.length < count || potB.length < count) {
+    const maxPlayers = Math.min(potA.length, potB.length);
     return {
       ok: false,
-      error: `Need at least ${count} teams per pot (have ${potA.length} A, ${potB.length} B)`,
+      error: `Too many players (${count}). Maximum ${maxPlayers} with the current team pool (${potA.length} Pot A, ${potB.length} Pot B). Run migration 003_rebalance_pots.sql in Supabase if you have 9–12 players.`,
     };
   }
 
@@ -77,8 +78,18 @@ export async function assignTeams(competitionId: string): Promise<{
     .update({ status: "drawn" })
     .eq("id", competitionId);
 
-  const provider = getDataProvider();
-  await provider.seedCompetition(competitionId);
+  try {
+    const provider = getDataProvider();
+    await provider.seedCompetition(competitionId);
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Draw saved but failed to seed fixtures. Check Supabase teams table.",
+    };
+  }
 
   return { ok: true, assigned: count };
 }

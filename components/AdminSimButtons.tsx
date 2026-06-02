@@ -1,21 +1,52 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { runSim, runTeamDraw } from "@/app/actions/competition";
 import type { SimMode } from "@/lib/simulation/run";
 
-export function AdminSimButtons({ competitionId }: { competitionId: string }) {
-  const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
+type ActionResult = {
+  error?: string;
+  success?: boolean;
+  assigned?: number;
+};
 
-  function run(action: () => Promise<{ error?: string; success?: boolean; assigned?: number }>) {
+export function AdminSimButtons({ competitionId }: { competitionId: string }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  async function run(
+    label: string,
+    action: () => Promise<ActionResult>
+  ) {
     setMessage(null);
-    startTransition(async () => {
+    setPending(true);
+    try {
       const result = await action();
-      if (result.error) setMessage(result.error);
-      else if (result.assigned) setMessage(`Assigned ${result.assigned} participants`);
-      else setMessage("Done!");
-    });
+      if (result.error) {
+        setMessage({ text: result.error, type: "error" });
+      } else if (result.assigned) {
+        setMessage({
+          text: `Team draw complete — ${result.assigned} players assigned.`,
+          type: "success",
+        });
+        router.refresh();
+      } else {
+        setMessage({ text: `${label} complete.`, type: "success" });
+        router.refresh();
+      }
+    } catch (e) {
+      setMessage({
+        text: e instanceof Error ? e.message : "Something went wrong",
+        type: "error",
+      });
+    } finally {
+      setPending(false);
+    }
   }
 
   const buttons: { label: string; mode?: SimMode; draw?: boolean }[] = [
@@ -34,7 +65,7 @@ export function AdminSimButtons({ competitionId }: { competitionId: string }) {
           type="button"
           disabled={pending}
           onClick={() =>
-            run(() =>
+            run(b.label, () =>
               b.draw
                 ? runTeamDraw(competitionId)
                 : runSim(competitionId, b.mode!)
@@ -42,11 +73,20 @@ export function AdminSimButtons({ competitionId }: { competitionId: string }) {
           }
           className="w-full rounded-lg bg-pitch-600 px-4 py-3 text-sm font-medium text-white hover:bg-pitch-700 disabled:opacity-50"
         >
-          {b.label}
+          {pending ? "Working…" : b.label}
         </button>
       ))}
       {message && (
-        <p className="text-sm text-pitch-700 dark:text-pitch-400">{message}</p>
+        <p
+          className={`rounded-lg p-3 text-sm ${
+            message.type === "error"
+              ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+              : "bg-pitch-50 text-pitch-800 dark:bg-pitch-950/40 dark:text-pitch-200"
+          }`}
+          role="alert"
+        >
+          {message.text}
+        </p>
       )}
     </div>
   );
