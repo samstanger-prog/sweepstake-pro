@@ -70,20 +70,30 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Scoring Rules
 
-**Per match (group stage):**
+**Group stage (per match, per team):**
 
-- Win: 3 pts
-- Draw: 1 pt
-- Goal scored: 1 pt each
-- Clean sheet: 2 pts
+| Event | Points |
+|-------|--------|
+| Goal scored | +1 each |
+| Win | +3 |
+| Draw | +1 |
 
-**Tournament progression (per team):**
+**Knockout (cumulative — each round the team plays in adds once):**
 
-- Round of 16: 5 pts
-- Quarter-final: 10 pts
-- Semi-final: 15 pts
-- Final: 20 pts
-- Winner bonus: 30 pts
+| Round reached | Points |
+|---------------|--------|
+| Round of 32 | +5 |
+| Round of 16 | +10 |
+| Quarter-final | +10 |
+| Semi-final | +10 |
+| Final | +10 |
+| Win World Cup | +15 bonus |
+
+Example: R32 → R16 → QF → SF → Final and win = 5+10+10+10+10 + 15 = **60** progression/bonus (plus group points).
+
+**24-team mock note:** The mock tournament has no Round of 32 (knockout starts at Round of 16). R32 points apply after the 48-team bracket is added. Re-run simulation in Admin after rule changes.
+
+**Simulation:** ~10% forced draws in random mode; use **Fast Simulate** for 2–1 results every match.
 
 ## Deploy on Vercel
 

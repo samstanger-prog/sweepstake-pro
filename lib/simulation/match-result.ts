@@ -8,9 +8,14 @@ export function generateScore(fast = false, seed?: number): {
   }
 
   const rand = seed !== undefined ? seededRandom(seed) : Math.random;
-  const draw = rand() < 0.25;
+  const draw = rand() < 0.1;
   const home = Math.floor(rand() * 5);
-  const away = draw ? home : Math.floor(rand() * 5);
+  let away = draw ? home : Math.floor(rand() * 5);
+
+  if (!draw && away === home) {
+    away = home < 4 ? home + 1 : home - 1;
+  }
+
   return { home, away };
 }
 

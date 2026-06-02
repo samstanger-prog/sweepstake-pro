@@ -1,13 +1,12 @@
 import type { Match, ScoreDetailItem, Team, TeamScoreDetail } from "@/lib/supabase/types";
-
-const ROUND_POINTS: Record<string, number> = {
-  "Round of 16": 5,
-  "Quarter-final": 10,
-  "Semi-final": 15,
-  Final: 20,
-};
-
-const WINNER_BONUS = 30;
+import {
+  GROUP_DRAW_POINTS,
+  GROUP_GOAL_POINTS,
+  GROUP_WIN_POINTS,
+  KNOCKOUT_ROUND_POINTS,
+  KNOCKOUT_ROUNDS_ORDER,
+  WORLD_CUP_WINNER_BONUS,
+} from "./rules";
 
 function opponentName(
   match: Match,
@@ -45,19 +44,17 @@ function groupMatchPoints(
   let total = 0;
 
   if (goalsFor > goalsAgainst) {
-    total += 3;
-    parts.push("win +3");
+    total += GROUP_WIN_POINTS;
+    parts.push(`win +${GROUP_WIN_POINTS}`);
   } else if (goalsFor === goalsAgainst) {
-    total += 1;
-    parts.push("draw +1");
+    total += GROUP_DRAW_POINTS;
+    parts.push(`draw +${GROUP_DRAW_POINTS}`);
   }
   if (goalsFor > 0) {
-    total += goalsFor;
-    parts.push(`${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalsFor}`);
-  }
-  if (goalsAgainst === 0) {
-    total += 2;
-    parts.push("clean sheet +2");
+    total += goalsFor * GROUP_GOAL_POINTS;
+    parts.push(
+      `${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalsFor * GROUP_GOAL_POINTS}`
+    );
   }
 
   return { total, parts };
@@ -106,6 +103,8 @@ export function calculateTeamPoints(
     .filter((m) => m.round !== "Group Stage")
     .sort((a, b) => (a.knockout_order ?? 0) - (b.knockout_order ?? 0));
 
+  const roundsPlayed = new Set(knockoutMatches.map((m) => m.round));
+
   for (const m of knockoutMatches) {
     const opponent = opponentName(m, teamId, teamMap);
     items.push({
@@ -114,16 +113,16 @@ export function calculateTeamPoints(
     });
   }
 
-  if (knockoutMatches.length > 0) {
-    const deepest = knockoutMatches[knockoutMatches.length - 1];
-    const pts = ROUND_POINTS[deepest.round] ?? 0;
-    if (pts > 0) {
-      progressionPoints += pts;
-      items.push({
-        description: `Reached ${deepest.round}`,
-        points: pts,
-      });
-    }
+  for (const roundName of KNOCKOUT_ROUNDS_ORDER) {
+    if (!roundsPlayed.has(roundName)) continue;
+    const pts =
+      KNOCKOUT_ROUND_POINTS[roundName as keyof typeof KNOCKOUT_ROUND_POINTS];
+    if (!pts) continue;
+    progressionPoints += pts;
+    items.push({
+      description: `Reached ${roundName} (cumulative)`,
+      points: pts,
+    });
   }
 
   const final = matches.find(
@@ -133,11 +132,11 @@ export function calculateTeamPoints(
       m.winner_team_id === teamId
   );
   if (final) {
-    bonusPoints += WINNER_BONUS;
+    bonusPoints += WORLD_CUP_WINNER_BONUS;
     const opponent = opponentName(final, teamId, teamMap);
     items.push({
-      description: `Tournament winner · ${scoreLine(final, teamId)} vs ${opponent} in the Final`,
-      points: WINNER_BONUS,
+      description: `Win World Cup · ${scoreLine(final, teamId)} vs ${opponent} in the Final`,
+      points: WORLD_CUP_WINNER_BONUS,
     });
   }
 
