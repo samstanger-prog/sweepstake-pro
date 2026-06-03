@@ -9,6 +9,7 @@ import { generateInviteCode } from "@/lib/utils/invite-code";
 import { profilePath } from "@/lib/utils/slug";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { assignTeams } from "@/lib/draw/assign-teams";
+import { testPlayerNames } from "@/lib/test/participants";
 import { runSimulation, type SimMode } from "@/lib/simulation/run";
 
 export async function createCompetition(formData: FormData) {
@@ -149,6 +150,78 @@ export async function runTeamDraw(competitionId: string) {
   revalidatePath("/admin");
   revalidatePath("/leaderboard");
   return { success: true, assigned: result.assigned, potAEndRank: result.potAEndRank };
+}
+
+const DEFAULT_TEST_COUNT = 10;
+
+/** Add test players and run team draw (no simulation). Competition must have 0 participants. */
+export async function setupTestCompetition(
+  competitionId: string,
+  count = DEFAULT_TEST_COUNT
+) {
+  if (!(await isAdminAuthenticated())) {
+    return { error: "Unauthorized" };
+  }
+  if (!isSupabaseAdminConfigured()) {
+    return { error: "Database not configured." };
+  }
+  if (count < 1 || count > 20) {
+    return { error: "Test player count must be between 1 and 20." };
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id, status")
+    .eq("id", competitionId)
+    .single();
+
+  if (!competition) return { error: "Competition not found" };
+
+  const { data: existing } = await supabase
+    .from("participants")
+    .select("id")
+    .eq("competition_id", competitionId);
+
+  if (existing && existing.length > 0) {
+    return {
+      error:
+        "Competition already has players. Reset tournament or create a fresh competition for test setup.",
+    };
+  }
+
+  const names = testPlayerNames(count);
+  for (const name of names) {
+    const slug = await uniqueParticipantSlug(supabase, competitionId, name);
+    const { error } = await supabase.from("participants").insert({
+      competition_id: competitionId,
+      name,
+      slug,
+    });
+    if (error) return { error: error.message };
+  }
+
+  const draw = await assignTeams(competitionId);
+  if (!draw.ok) {
+    return {
+      error:
+        draw.error ??
+        "Test players added but team draw failed. Fix the issue and run Team Draw.",
+    };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/leaderboard");
+  revalidatePath("/c");
+
+  return {
+    success: true,
+    count: names.length,
+    names,
+    assigned: draw.assigned,
+    potAEndRank: draw.potAEndRank,
+  };
 }
 
 export async function resetTournament(

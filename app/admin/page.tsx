@@ -1,5 +1,6 @@
 import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
+import { AdminTestSetup } from "@/components/AdminTestSetup";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { CreateCompetitionForm } from "@/components/CreateCompetitionForm";
 import { InviteCodeCopy } from "@/components/InviteCodeCopy";
@@ -11,6 +12,7 @@ import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { isMockDataEnabled } from "@/lib/config";
+import { isTestPlayerName } from "@/lib/test/participants";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,9 @@ export default async function AdminPage() {
 
   let participantCount = 0;
   let roster: RosterEntry[] = [];
+  let participantNames: string[] = [];
+  let allTestPlayers = false;
+  let hasRealPlayers = false;
 
   if (latest) {
     const { data: participants } = await supabase
@@ -92,6 +97,13 @@ export default async function AdminPage() {
       };
     });
     participantCount = roster.length;
+    participantNames = roster.map((r) => r.name);
+    allTestPlayers =
+      participantCount > 0 &&
+      participantNames.every((n) => isTestPlayerName(n));
+    hasRealPlayers =
+      participantCount > 0 &&
+      participantNames.some((n) => !isTestPlayerName(n));
   }
 
   return (
@@ -131,6 +143,13 @@ export default async function AdminPage() {
           )}
 
           <AdminSimButtons competitionId={latest.id} />
+          <AdminTestSetup
+            competitionId={latest.id}
+            participantCount={participantCount}
+            participantNames={participantNames}
+            hasRealPlayers={hasRealPlayers}
+            allTestPlayers={allTestPlayers}
+          />
           <AdminResetTournament
             competitionId={latest.id}
             inviteCode={latest.invite_code}
