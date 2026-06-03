@@ -40,21 +40,13 @@ export default function RulesPage() {
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-semibold">Knockout bracket</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Round of 32 pairings and knockout advancement follow the FIFA World
-          Cup 2026 structure. After all group games, the admin assigns the eight
-          qualifying third-placed teams to their R32 slots (as on TV / Annexe
-          C), then generates the Round of 32.
-        </p>
-      </section>
-
-      <section className="card space-y-3">
         <h2 className="font-semibold">Knockout — cumulative</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          48-team format: 12 groups, Round of 32 through Final. Each knockout
-          round your team completes adds once (they stack). Third-place match:
-          goal points only.
+          The tournament follows the real World Cup 2026 format: 12 groups,
+          then Round of 32 through to the Final. Your teams earn goal points in
+          every knockout match, plus a bonus each time they reach a new round
+          (bonuses stack). The third-place play-off counts for goals only — no
+          reach bonus.
         </p>
         {KNOCKOUT_ROUNDS_ORDER.map((round) => (
           <RuleRow

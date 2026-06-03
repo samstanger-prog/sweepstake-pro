@@ -127,3 +127,78 @@ export function buildDefaultThirdPlaceSlots(
   });
   return slots;
 }
+
+export type TeamDisplay = { name: string; flag: string };
+
+export function getR32SlotForThirdKey(
+  key: ThirdPlaceSlotKey
+): R32SlotDef | undefined {
+  return R32_SLOT_TEMPLATE.find((s) => s.away === `3rd:${key}`);
+}
+
+/** Format a bracket slot (2A, 1L, 3rd:EHIJK) as flag + name or fallback code. */
+export function formatBracketSlotLabel(
+  slot: string,
+  groupRanks: Map<string, Map<number, string>>,
+  getTeam: (teamId: string) => TeamDisplay | undefined,
+  thirdSlots?: ThirdPlaceSlotMap
+): string {
+  if (slot.startsWith("3rd:")) {
+    const key = slot.slice(4) as ThirdPlaceSlotKey;
+    const teamId = thirdSlots?.[key];
+    if (teamId) {
+      const t = getTeam(teamId);
+      if (t) return `${t.flag} ${t.name}`;
+    }
+    return `3rd (${key})`;
+  }
+  const rank = parseInt(slot.charAt(0), 10);
+  const group = slot.charAt(1);
+  const teamId = groupRanks.get(group)?.get(rank);
+  if (teamId) {
+    const t = getTeam(teamId);
+    if (t) return `${t.flag} ${t.name}`;
+  }
+  return slot;
+}
+
+export function buildThirdPlaceSlotLabels(
+  groupRanks: Map<string, Map<number, string>>,
+  getTeam: (teamId: string) => TeamDisplay | undefined
+): Record<ThirdPlaceSlotKey, string> {
+  const labels = {} as Record<ThirdPlaceSlotKey, string>;
+  for (const key of THIRD_PLACE_SLOT_KEYS) {
+    const row = getR32SlotForThirdKey(key);
+    const homeLabel = row
+      ? formatBracketSlotLabel(row.home, groupRanks, getTeam)
+      : `1?`;
+    labels[key] = `${homeLabel} vs 3rd (${key})`;
+  }
+  return labels;
+}
+
+export type R32PreviewRow = {
+  fixtureId: number;
+  homeLabel: string;
+  awayLabel: string;
+  thirdSlotKey?: ThirdPlaceSlotKey;
+};
+
+export function buildR32PreviewRows(
+  groupRanks: Map<string, Map<number, string>>,
+  getTeam: (teamId: string) => TeamDisplay | undefined,
+  thirdSlots?: ThirdPlaceSlotMap
+): R32PreviewRow[] {
+  return R32_SLOT_TEMPLATE.map((row) => {
+    let thirdSlotKey: ThirdPlaceSlotKey | undefined;
+    if (row.away.startsWith("3rd:")) {
+      thirdSlotKey = row.away.slice(4) as ThirdPlaceSlotKey;
+    }
+    return {
+      fixtureId: row.fixtureId,
+      homeLabel: formatBracketSlotLabel(row.home, groupRanks, getTeam, thirdSlots),
+      awayLabel: formatBracketSlotLabel(row.away, groupRanks, getTeam, thirdSlots),
+      thirdSlotKey,
+    };
+  });
+}

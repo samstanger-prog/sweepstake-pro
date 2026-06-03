@@ -10,9 +10,17 @@ import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
 import { AdminTestSetup } from "@/components/AdminTestSetup";
 import { GROUP_STAGE_MATCH_COUNT } from "@/lib/simulation/bracket";
-import { isThirdPlaceSlotMapComplete } from "@/lib/bracket/fifa-wc2026";
-import { getQualifyingThirdPlaceTeams } from "@/lib/simulation/standings";
-import type { ThirdPlaceSlotKey } from "@/lib/bracket/fifa-wc2026";
+import {
+  isThirdPlaceSlotMapComplete,
+  buildThirdPlaceSlotLabels,
+  buildR32PreviewRows,
+  type ThirdPlaceSlotKey,
+  type R32PreviewRow,
+} from "@/lib/bracket/fifa-wc2026";
+import {
+  getQualifyingThirdPlaceTeams,
+  getGroupRanks,
+} from "@/lib/simulation/standings";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { CreateCompetitionForm } from "@/components/CreateCompetitionForm";
 import { InviteCodeCopy } from "@/components/InviteCodeCopy";
@@ -82,6 +90,8 @@ export default async function AdminPage() {
   let qualifyingThirds: QualifyingThirdRow[] = [];
   let savedThirdSlots: Partial<Record<ThirdPlaceSlotKey, string>> = {};
   let slotsComplete = false;
+  let thirdPlaceSlotLabels: Record<ThirdPlaceSlotKey, string> | null = null;
+  let r32PreviewBase: R32PreviewRow[] = [];
 
   if (latest) {
     savedThirdSlots =
@@ -205,6 +215,21 @@ export default async function AdminPage() {
           groupName: t.group_name,
         };
       });
+
+      const groupRanks = getGroupRanks(standingsRows ?? []);
+      const getTeamDisplay = (teamId: string) => {
+        const t = teamMap.get(teamId);
+        return t ? { name: t.name, flag: t.flag_emoji } : undefined;
+      };
+      thirdPlaceSlotLabels = buildThirdPlaceSlotLabels(
+        groupRanks,
+        getTeamDisplay
+      );
+      r32PreviewBase = buildR32PreviewRows(
+        groupRanks,
+        getTeamDisplay,
+        savedThirdSlots
+      );
     }
   }
 
@@ -257,6 +282,8 @@ export default async function AdminPage() {
               savedSlots={savedThirdSlots}
               r32Populated={r32Populated}
               slotsComplete={slotsComplete}
+              slotLabels={thirdPlaceSlotLabels}
+              r32PreviewBase={r32PreviewBase}
             />
           )}
           {adminMatches.length > 0 && (

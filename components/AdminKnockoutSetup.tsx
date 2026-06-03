@@ -1,7 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import {
   saveThirdPlaceSlotAssignments,
   fillRoundOf32FromStandings,
@@ -9,6 +9,7 @@ import {
 import {
   THIRD_PLACE_SLOT_KEYS,
   type ThirdPlaceSlotKey,
+  type R32PreviewRow,
 } from "@/lib/bracket/fifa-wc2026";
 
 export type QualifyingThirdRow = {
@@ -26,9 +27,11 @@ type Props = {
   savedSlots: Partial<Record<ThirdPlaceSlotKey, string>>;
   r32Populated: boolean;
   slotsComplete: boolean;
+  slotLabels: Record<ThirdPlaceSlotKey, string> | null;
+  r32PreviewBase: R32PreviewRow[];
 };
 
-const SLOT_LABELS: Record<ThirdPlaceSlotKey, string> = {
+const FALLBACK_SLOT_LABELS: Record<ThirdPlaceSlotKey, string> = {
   ABCDF: "1E vs 3rd (ABCDF)",
   CDFGH: "1I vs 3rd (CDFGH)",
   CEFHI: "1A vs 3rd (CEFHI)",
@@ -47,6 +50,8 @@ export function AdminKnockoutSetup({
   savedSlots,
   r32Populated,
   slotsComplete,
+  slotLabels,
+  r32PreviewBase,
 }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -72,6 +77,30 @@ export function AdminKnockoutSetup({
 
   const groupComplete = groupFinishedCount >= groupTotal;
   const allAssigned = THIRD_PLACE_SLOT_KEYS.every((k) => assignments[k]);
+
+  const thirdById = useMemo(
+    () => new Map(qualifyingThirds.map((t) => [t.teamId, t])),
+    [qualifyingThirds]
+  );
+
+  const r32Preview = useMemo(() => {
+    if (r32PreviewBase.length === 0) return [];
+    return r32PreviewBase.map((row) => {
+      if (!row.thirdSlotKey) return row;
+      const pickedId = assignments[row.thirdSlotKey];
+      const picked = pickedId ? thirdById.get(pickedId) : undefined;
+      return {
+        ...row,
+        awayLabel: picked
+          ? `${picked.flag} ${picked.name}`
+          : row.awayLabel,
+      };
+    });
+  }, [r32PreviewBase, assignments, thirdById]);
+
+  function labelForSlot(key: ThirdPlaceSlotKey) {
+    return slotLabels?.[key] ?? FALLBACK_SLOT_LABELS[key];
+  }
 
   async function handleSaveSlots() {
     setMessage(null);
@@ -176,9 +205,26 @@ export function AdminKnockoutSetup({
         Knockout setup
       </h3>
       <p className="text-xs text-slate-500">
-        FIFA WC 2026 structure: assign each qualifying third-placed team to its
-        R32 slot (match Annexe C / TV bracket), then generate Round of 32.
+        Pick which qualifying third-placed team plays in each game. Match
+        FIFA/TV when groups finish.
       </p>
+
+      {r32Preview.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Round of 32 preview
+          </p>
+          <ul className="max-h-48 space-y-1 overflow-y-auto text-xs text-slate-700 dark:text-slate-300">
+            {r32Preview.map((row) => (
+              <li key={row.fixtureId}>
+                <span className="text-slate-400">#{row.fixtureId}</span>{" "}
+                {row.homeLabel}{" "}
+                <span className="text-slate-400">vs</span> {row.awayLabel}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {qualifyingThirds.length > 0 && (
         <div className="space-y-3">
@@ -197,7 +243,7 @@ export function AdminKnockoutSetup({
             {THIRD_PLACE_SLOT_KEYS.map((key) => (
               <label key={key} className="block text-sm">
                 <span className="mb-1 block text-slate-600 dark:text-slate-400">
-                  {SLOT_LABELS[key]}
+                  {labelForSlot(key)}
                 </span>
                 <select
                   value={assignments[key] ?? ""}
