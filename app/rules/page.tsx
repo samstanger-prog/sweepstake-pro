@@ -41,13 +41,6 @@ export default function RulesPage() {
 
       <section className="card space-y-3">
         <h2 className="font-semibold">Knockout — cumulative</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          The tournament follows the real World Cup 2026 format: 12 groups,
-          then Round of 32 through to the Final. Your teams earn goal points in
-          every knockout match, plus a bonus each time they reach a new round
-          (bonuses stack). The third-place play-off counts for goals only — no
-          reach bonus.
-        </p>
         {KNOCKOUT_ROUNDS_ORDER.map((round) => (
           <RuleRow
             key={round}
