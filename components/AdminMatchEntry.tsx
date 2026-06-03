@@ -29,6 +29,7 @@ export type AdminMatchRow = {
 type Props = {
   competitionId: string;
   matches: AdminMatchRow[];
+  assignedTeamIds: string[];
   groupFinishedCount: number;
   groupTotal: number;
   r32Populated: boolean;
@@ -51,9 +52,29 @@ function isKnockoutRound(round: string) {
   return round !== "Group Stage";
 }
 
+function matchSearchText(m: AdminMatchRow): string {
+  return [
+    m.homeName,
+    m.awayName,
+    m.homeCode,
+    m.awayCode,
+    m.groupName ? `group ${m.groupName}` : "",
+    m.round,
+    String(m.fixtureId),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function matchesSearchQuery(m: AdminMatchRow, query: string): boolean {
+  if (!query) return true;
+  return matchSearchText(m).includes(query);
+}
+
 export function AdminMatchEntry({
   competitionId,
   matches,
+  assignedTeamIds,
   groupFinishedCount,
   groupTotal,
   r32Populated,
@@ -64,6 +85,8 @@ export function AdminMatchEntry({
     useState<(typeof ROUND_FILTERS)[number]>("All");
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_FILTERS)[number]>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [playerTeamsOnly, setPlayerTeamsOnly] = useState(false);
   const [selectedId, setSelectedId] = useState(matches[0]?.id ?? "");
   const [homeGoals, setHomeGoals] = useState("");
   const [awayGoals, setAwayGoals] = useState("");
@@ -73,14 +96,42 @@ export function AdminMatchEntry({
     type: "success" | "error" | "warning";
   } | null>(null);
 
+  const assignedTeamIdSet = useMemo(
+    () => new Set(assignedTeamIds),
+    [assignedTeamIds]
+  );
+
+  const searchNormalized = searchQuery.trim().toLowerCase();
+
+  const filtersActive =
+    roundFilter !== "All" ||
+    statusFilter !== "All" ||
+    searchNormalized.length > 0 ||
+    playerTeamsOnly;
+
   const filtered = useMemo(() => {
     return matches.filter((m) => {
       if (roundFilter !== "All" && m.round !== roundFilter) return false;
       if (statusFilter === "Not played" && m.status === "FT") return false;
       if (statusFilter === "Finished" && m.status !== "FT") return false;
+      if (!matchesSearchQuery(m, searchNormalized)) return false;
+      if (
+        playerTeamsOnly &&
+        !assignedTeamIdSet.has(m.homeTeamId) &&
+        !assignedTeamIdSet.has(m.awayTeamId)
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [matches, roundFilter, statusFilter]);
+  }, [
+    matches,
+    roundFilter,
+    statusFilter,
+    searchNormalized,
+    playerTeamsOnly,
+    assignedTeamIdSet,
+  ]);
 
   const selected =
     filtered.find((m) => m.id === selectedId) ??
@@ -88,15 +139,26 @@ export function AdminMatchEntry({
     matches.find((m) => m.id === selectedId);
 
   useEffect(() => {
-    const m =
-      matches.find((x) => x.id === selectedId) ??
-      filtered[0] ??
-      matches[0];
+    if (filtered.length === 0) return;
+    if (!filtered.some((m) => m.id === selectedId)) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
+  useEffect(() => {
+    const m = matches.find((x) => x.id === selectedId);
     if (!m) return;
     setHomeGoals(m.homeGoals != null ? String(m.homeGoals) : "");
     setAwayGoals(m.awayGoals != null ? String(m.awayGoals) : "");
     setPenWinnerId("");
-  }, [matches, selectedId, filtered]);
+  }, [matches, selectedId]);
+
+  function hasAssignedTeam(m: AdminMatchRow) {
+    return (
+      assignedTeamIdSet.has(m.homeTeamId) ||
+      assignedTeamIdSet.has(m.awayTeamId)
+    );
+  }
 
   const groupComplete = groupFinishedCount >= groupTotal;
   const knockoutSelected = selected ? isKnockoutRound(selected.round) : false;
@@ -276,6 +338,57 @@ export function AdminMatchEntry({
       </div>
 
       <label className="block text-sm">
+        <span className="mb-1 block text-slate-600 dark:text-slate-400">
+          Search
+        </span>
+        <div className="relative">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search team, code, group, round, fixture #…"
+            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-9 text-sm dark:border-slate-600 dark:bg-slate-800"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {filtersActive && (
+          <p className="mt-1 text-xs text-slate-500">
+            {filtered.length === 0
+              ? "No matches match filters"
+              : `${filtered.length} match${filtered.length === 1 ? "" : "es"}`}
+          </p>
+        )}
+      </label>
+
+      <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={playerTeamsOnly}
+          onChange={(e) => setPlayerTeamsOnly(e.target.checked)}
+          className="mt-0.5 rounded border-slate-300"
+        />
+        <span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            Only matches with assigned player teams
+          </span>
+          {playerTeamsOnly && (
+            <span className="mt-0.5 block text-xs text-slate-500">
+              Showing fixtures involving at least one sweepstake team.
+            </span>
+          )}
+        </span>
+      </label>
+
+      <label className="block text-sm">
         <span className="mb-1 block text-slate-600 dark:text-slate-400">Match</span>
         <select
           value={selected?.id ?? ""}
@@ -290,7 +403,7 @@ export function AdminMatchEntry({
           ) : (
             filtered.map((m) => (
               <option key={m.id} value={m.id}>
-                #{m.fixtureId}{" "}
+                {hasAssignedTeam(m) ? "★ " : ""}#{m.fixtureId}{" "}
                 {m.groupName ? `Group ${m.groupName}` : m.round} — {m.homeFlag}{" "}
                 {m.homeName} vs {m.awayFlag} {m.awayName}
                 {m.status === "FT"

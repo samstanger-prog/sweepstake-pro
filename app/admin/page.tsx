@@ -71,6 +71,7 @@ export default async function AdminPage() {
   let groupFinishedCount = 0;
   let hasFtMatches = false;
   let r32Populated = false;
+  let assignedTeamIds: string[] = [];
 
   if (latest) {
     const { data: participants } = await supabase
@@ -114,16 +115,25 @@ export default async function AdminPage() {
       participantCount > 0 &&
       participantNames.some((n) => !isTestPlayerName(n));
 
-    const [{ data: matchRows }, { data: teams }] = await Promise.all([
-      supabase
-        .from("matches")
-        .select(
-          "id, fixture_id, round, group_name, status, home_goals, away_goals, home_team_id, away_team_id"
-        )
-        .eq("competition_id", latest.id)
-        .order("fixture_id"),
-      supabase.from("teams").select("id, name, flag_emoji, code"),
-    ]);
+    const [{ data: matchRows }, { data: teams }, { data: userTeamRows }] =
+      await Promise.all([
+        supabase
+          .from("matches")
+          .select(
+            "id, fixture_id, round, group_name, status, home_goals, away_goals, home_team_id, away_team_id"
+          )
+          .eq("competition_id", latest.id)
+          .order("fixture_id"),
+        supabase.from("teams").select("id, name, flag_emoji, code"),
+        supabase
+          .from("user_teams")
+          .select("team_id")
+          .eq("competition_id", latest.id),
+      ]);
+
+    assignedTeamIds = [
+      ...new Set(userTeamRows?.map((ut) => ut.team_id) ?? []),
+    ];
 
     const teamMap = new Map(teams?.map((t) => [t.id, t]) ?? []);
     const tbdId = teams?.find((t) => t.code === "TBD")?.id;
@@ -208,6 +218,7 @@ export default async function AdminPage() {
             <AdminMatchEntry
               competitionId={latest.id}
               matches={adminMatches}
+              assignedTeamIds={assignedTeamIds}
               groupFinishedCount={groupFinishedCount}
               groupTotal={GROUP_STAGE_MATCH_COUNT}
               r32Populated={r32Populated}
