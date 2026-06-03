@@ -12,7 +12,13 @@ type ActionResult = {
   potAEndRank?: number;
 };
 
-export function AdminSimButtons({ competitionId }: { competitionId: string }) {
+export function AdminSimButtons({
+  competitionId,
+  hasFtMatches = false,
+}: {
+  competitionId: string;
+  hasFtMatches?: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{
@@ -22,8 +28,16 @@ export function AdminSimButtons({ competitionId }: { competitionId: string }) {
 
   async function run(
     label: string,
-    action: () => Promise<ActionResult>
+    action: () => Promise<ActionResult>,
+    sim = false
   ) {
+    if (sim && hasFtMatches) {
+      const ok = window.confirm(
+        "Simulation overwrites all match scores. Manual results will be lost. Continue?"
+      );
+      if (!ok) return;
+    }
+
     setMessage(null);
     setPending(true);
     try {
@@ -64,16 +78,24 @@ export function AdminSimButtons({ competitionId }: { competitionId: string }) {
 
   return (
     <div className="space-y-2">
+      {hasFtMatches && (
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          Manual scores entered — simulation will overwrite match results.
+        </p>
+      )}
       {buttons.map((b) => (
         <button
           key={b.label}
           type="button"
           disabled={pending}
           onClick={() =>
-            run(b.label, () =>
-              b.draw
-                ? runTeamDraw(competitionId)
-                : runSim(competitionId, b.mode!)
+            run(
+              b.label,
+              () =>
+                b.draw
+                  ? runTeamDraw(competitionId)
+                  : runSim(competitionId, b.mode!),
+              !b.draw
             )
           }
           className="w-full rounded-lg bg-pitch-600 px-4 py-3 text-sm font-medium text-white hover:bg-pitch-700 disabled:opacity-50"

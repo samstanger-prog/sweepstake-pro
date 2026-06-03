@@ -1,6 +1,11 @@
+import {
+  AdminMatchEntry,
+  type AdminMatchRow,
+} from "@/components/AdminMatchEntry";
 import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
 import { AdminTestSetup } from "@/components/AdminTestSetup";
+import { GROUP_STAGE_MATCH_COUNT } from "@/lib/simulation/bracket";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { CreateCompetitionForm } from "@/components/CreateCompetitionForm";
 import { InviteCodeCopy } from "@/components/InviteCodeCopy";
@@ -62,6 +67,10 @@ export default async function AdminPage() {
   let participantNames: string[] = [];
   let allTestPlayers = false;
   let hasRealPlayers = false;
+  let adminMatches: AdminMatchRow[] = [];
+  let groupFinishedCount = 0;
+  let hasFtMatches = false;
+  let r32Populated = false;
 
   if (latest) {
     const { data: participants } = await supabase
@@ -104,6 +113,55 @@ export default async function AdminPage() {
     hasRealPlayers =
       participantCount > 0 &&
       participantNames.some((n) => !isTestPlayerName(n));
+
+    const [{ data: matchRows }, { data: teams }] = await Promise.all([
+      supabase
+        .from("matches")
+        .select(
+          "id, fixture_id, round, group_name, status, home_goals, away_goals, home_team_id, away_team_id"
+        )
+        .eq("competition_id", latest.id)
+        .order("fixture_id"),
+      supabase.from("teams").select("id, name, flag_emoji, code"),
+    ]);
+
+    const teamMap = new Map(teams?.map((t) => [t.id, t]) ?? []);
+    const tbdId = teams?.find((t) => t.code === "TBD")?.id;
+
+    adminMatches = (matchRows ?? []).map((m) => {
+      const home = teamMap.get(m.home_team_id);
+      const away = teamMap.get(m.away_team_id);
+      return {
+        id: m.id,
+        fixtureId: m.fixture_id,
+        round: m.round,
+        groupName: m.group_name,
+        status: m.status,
+        homeGoals: m.home_goals,
+        awayGoals: m.away_goals,
+        homeTeamId: m.home_team_id,
+        awayTeamId: m.away_team_id,
+        homeName: home?.name ?? "?",
+        homeFlag: home?.flag_emoji ?? "",
+        homeCode: home?.code ?? "",
+        awayName: away?.name ?? "?",
+        awayFlag: away?.flag_emoji ?? "",
+        awayCode: away?.code ?? "",
+      };
+    });
+
+    hasFtMatches = adminMatches.some((m) => m.status === "FT");
+    groupFinishedCount = adminMatches.filter(
+      (m) => m.round === "Group Stage" && m.status === "FT"
+    ).length;
+    r32Populated =
+      !!tbdId &&
+      adminMatches.some(
+        (m) =>
+          m.round === "Round of 32" &&
+          m.homeCode !== "TBD" &&
+          m.awayCode !== "TBD"
+      );
   }
 
   return (
@@ -142,7 +200,19 @@ export default async function AdminPage() {
             </div>
           )}
 
-          <AdminSimButtons competitionId={latest.id} />
+          <AdminSimButtons
+            competitionId={latest.id}
+            hasFtMatches={hasFtMatches}
+          />
+          {adminMatches.length > 0 && (
+            <AdminMatchEntry
+              competitionId={latest.id}
+              matches={adminMatches}
+              groupFinishedCount={groupFinishedCount}
+              groupTotal={GROUP_STAGE_MATCH_COUNT}
+              r32Populated={r32Populated}
+            />
+          )}
           <AdminTestSetup
             competitionId={latest.id}
             participantCount={participantCount}
