@@ -2,8 +2,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { GROUP_TEAMS } from "@/lib/mock/fixtures";
 import {
   rebuildStandingsFromMatches,
-  getQualifiedTeams,
+  getGroupRanks,
+  getQualifyingThirdPlaceTeams,
 } from "./standings";
+import {
+  R32_SLOT_TEMPLATE,
+  getKnockoutAdvancement,
+  resolveBracketSlot,
+  isThirdPlaceSlotMapComplete,
+  buildDefaultThirdPlaceSlots,
+  THIRD_PLACE_SLOT_KEYS,
+  type ThirdPlaceSlotMap,
+} from "@/lib/bracket/fifa-wc2026";
 import type { Match } from "@/lib/supabase/types";
 
 export const KNOCKOUT_ROUND_SEQUENCE = [
@@ -75,35 +85,115 @@ export async function syncGroupStandings(competitionId: string) {
   return standings;
 }
 
-/** Top 2 × 12 groups + 8 best thirds → 32 teams into R32 (1 vs 32, 2 vs 31, …). */
-export async function fillKnockoutBracket(
+/** Apply FIFA knockout advancement links to existing matches (repairs old competitions). */
+export async function syncKnockoutGraph(competitionId: string) {
+  const supabase = createAdminClient();
+  const { data: matches } = await supabase
+    .from("matches")
+    .select("id, fixture_id")
+    .eq("competition_id", competitionId)
+    .neq("round", "Group Stage");
+
+  for (const m of matches ?? []) {
+    const adv = getKnockoutAdvancement(m.fixture_id);
+    if (!adv) continue;
+    await supabase
+      .from("matches")
+      .update({ next_match_fixture_id: adv.nextFixtureId })
+      .eq("id", m.id);
+  }
+}
+
+export async function getThirdPlaceSlots(
+  competitionId: string
+): Promise<ThirdPlaceSlotMap> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("competitions")
+    .select("third_place_slots")
+    .eq("id", competitionId)
+    .single();
+  return (data?.third_place_slots as ThirdPlaceSlotMap) ?? {};
+}
+
+export async function saveThirdPlaceSlots(
+  competitionId: string,
+  slots: ThirdPlaceSlotMap
+) {
+  const supabase = createAdminClient();
+  await supabase
+    .from("competitions")
+    .update({ third_place_slots: slots })
+    .eq("id", competitionId);
+}
+
+/** Auto-map qualifying thirds to slot keys (sim / testing — not Annexe C). */
+export async function autoAssignThirdPlaceSlots(
   competitionId: string,
   standings?: ReturnType<typeof rebuildStandingsFromMatches>
+) {
+  const resolved = standings ?? (await syncGroupStandings(competitionId));
+  const thirds = getQualifyingThirdPlaceTeams(resolved);
+  const slots = buildDefaultThirdPlaceSlots(thirds.map((t) => t.team_id));
+  await saveThirdPlaceSlots(competitionId, slots);
+  return slots;
+}
+
+/** Fill R32 from FIFA slot template (Art. 12.6) + stored third-place assignments. */
+export async function fillKnockoutBracket(
+  competitionId: string,
+  standings?: ReturnType<typeof rebuildStandingsFromMatches>,
+  options?: { autoThirdSlots?: boolean }
 ) {
   const supabase = createAdminClient();
   const resolved =
     standings ?? (await syncGroupStandings(competitionId));
-  const qualified = getQualifiedTeams(resolved, 2, 8);
+  const groupRanks = getGroupRanks(resolved);
 
-  const { data: r32 } = await supabase
+  let thirdSlots = await getThirdPlaceSlots(competitionId);
+  if (!isThirdPlaceSlotMapComplete(thirdSlots)) {
+    if (options?.autoThirdSlots) {
+      thirdSlots = await autoAssignThirdPlaceSlots(competitionId, resolved);
+    } else {
+      throw new Error(
+        "Third-place slot assignments incomplete. Assign all eight slots before generating knockouts."
+      );
+    }
+  }
+
+  await syncKnockoutGraph(competitionId);
+
+  const { data: r32Matches } = await supabase
     .from("matches")
-    .select("*")
+    .select("id, fixture_id")
     .eq("competition_id", competitionId)
     .eq("round", "Round of 32")
     .order("fixture_id");
 
-  if (!r32?.length) return;
+  if (!r32Matches?.length) return;
 
-  for (let i = 0; i < r32.length && i < 16; i++) {
-    const homeId = qualified[i] ?? qualified[0];
-    const awayId = qualified[31 - i] ?? qualified[1];
+  const r32Start = r32Matches[0].fixture_id;
+
+  for (const slot of R32_SLOT_TEMPLATE) {
+    const fixtureId = r32Start + (slot.fixtureId - R32_SLOT_TEMPLATE[0].fixtureId);
+    const match = r32Matches.find((m) => m.fixture_id === fixtureId);
+    if (!match) continue;
+
+    const homeId = resolveBracketSlot(slot.home, groupRanks, thirdSlots);
+    const awayId = resolveBracketSlot(slot.away, groupRanks, thirdSlots);
+    if (!homeId || !awayId) {
+      throw new Error(
+        `Could not resolve R32 slot ${slot.home} vs ${slot.away} (fixture ${fixtureId}).`
+      );
+    }
+
     await supabase
       .from("matches")
       .update({
         home_team_id: homeId,
         away_team_id: awayId,
       })
-      .eq("id", r32[i].id);
+      .eq("id", match.id);
   }
 }
 
@@ -112,29 +202,27 @@ export async function advanceWinner(
   match: Match,
   winnerId: string
 ) {
-  if (
-    !match.next_match_fixture_id ||
-    !match.knockout_order ||
-    match.round === "Third-place"
-  ) {
-    return;
-  }
+  if (match.round === "Third-place") return;
+
+  const adv = getKnockoutAdvancement(match.fixture_id);
+  if (!adv) return;
 
   const supabase = createAdminClient();
   const { data: nextMatch } = await supabase
     .from("matches")
     .select("*")
     .eq("competition_id", competitionId)
-    .eq("fixture_id", match.next_match_fixture_id)
+    .eq("fixture_id", adv.nextFixtureId)
     .single();
 
   if (!nextMatch) return;
 
-  const isHomeSlot = match.knockout_order % 2 === 1;
   await supabase
     .from("matches")
     .update(
-      isHomeSlot ? { home_team_id: winnerId } : { away_team_id: winnerId }
+      adv.slot === "home"
+        ? { home_team_id: winnerId }
+        : { away_team_id: winnerId }
     )
     .eq("id", nextMatch.id);
 }
@@ -267,3 +355,5 @@ export async function hasKnockoutTeamsAssigned(
     ) ?? false
   );
 }
+
+export { THIRD_PLACE_SLOT_KEYS };

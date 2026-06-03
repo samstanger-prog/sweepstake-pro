@@ -69,7 +69,7 @@ async function simulateGroupStage(competitionId: string, fast: boolean) {
   }
 
   const standings = await syncGroupStandings(competitionId);
-  await fillKnockoutBracket(competitionId, standings);
+  await fillKnockoutBracket(competitionId, standings, { autoThirdSlots: true });
 }
 
 async function simulateKnockout(competitionId: string, fast: boolean) {

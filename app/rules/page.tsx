@@ -40,6 +40,16 @@ export default function RulesPage() {
       </section>
 
       <section className="card space-y-3">
+        <h2 className="font-semibold">Knockout bracket</h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Round of 32 pairings and knockout advancement follow the FIFA World
+          Cup 2026 structure. After all group games, the admin assigns the eight
+          qualifying third-placed teams to their R32 slots (as on TV / Annexe
+          C), then generates the Round of 32.
+        </p>
+      </section>
+
+      <section className="card space-y-3">
         <h2 className="font-semibold">Knockout — cumulative</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">
           48-team format: 12 groups, Round of 32 through Final. Each knockout

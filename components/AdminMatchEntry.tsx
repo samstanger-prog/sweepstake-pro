@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   saveMatchResult,
-  fillRoundOf32FromStandings,
   recalculateAllPoints,
 } from "@/app/actions/matches";
 
@@ -30,9 +29,6 @@ type Props = {
   competitionId: string;
   matches: AdminMatchRow[];
   assignedTeamIds: string[];
-  groupFinishedCount: number;
-  groupTotal: number;
-  r32Populated: boolean;
 };
 
 const ROUND_FILTERS = [
@@ -75,9 +71,6 @@ export function AdminMatchEntry({
   competitionId,
   matches,
   assignedTeamIds,
-  groupFinishedCount,
-  groupTotal,
-  r32Populated,
 }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -160,7 +153,6 @@ export function AdminMatchEntry({
     );
   }
 
-  const groupComplete = groupFinishedCount >= groupTotal;
   const knockoutSelected = selected ? isKnockoutRound(selected.round) : false;
   const hasTbdTeam =
     selected?.homeCode === "TBD" || selected?.awayCode === "TBD";
@@ -230,39 +222,6 @@ export function AdminMatchEntry({
           text: result.warning ?? "Match saved.",
           type,
         });
-        router.refresh();
-      }
-    } catch (e) {
-      setMessage({
-        text: e instanceof Error ? e.message : "Something went wrong",
-        type: "error",
-      });
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function handleFillR32() {
-    if (!groupComplete) return;
-
-    let msg = "Set Round of 32 teams from group standings?";
-    if (r32Populated) {
-      msg =
-        "Replace existing Round of 32 teams from current standings?";
-    }
-    if (!window.confirm(msg)) return;
-
-    setMessage(null);
-    setPending(true);
-    try {
-      const result = await fillRoundOf32FromStandings(
-        competitionId,
-        r32Populated
-      );
-      if (result.error) {
-        setMessage({ text: result.error, type: "error" });
-      } else {
-        setMessage({ text: "Round of 32 filled from standings.", type: "success" });
         router.refresh();
       }
     } catch (e) {
@@ -488,27 +447,6 @@ export function AdminMatchEntry({
       )}
 
       <div className="space-y-2">
-        <button
-          type="button"
-          disabled={pending || !groupComplete}
-          onClick={() => handleFillR32()}
-          className="w-full rounded-lg border border-pitch-600 bg-white px-4 py-3 text-sm font-medium text-pitch-700 hover:bg-pitch-50 disabled:opacity-50 dark:bg-slate-800 dark:text-pitch-300 dark:hover:bg-slate-700"
-        >
-          {pending ? "Working…" : "Fill R32 from standings"}
-        </button>
-        {!groupComplete && (
-          <p className="text-xs text-slate-500">
-            Group stage: {groupFinishedCount}/{groupTotal} finished — complete
-            all group matches first.
-          </p>
-        )}
-        {groupComplete && r32Populated && (
-          <p className="text-xs text-slate-500">
-            R32 already has teams. Running again replaces them from current
-            standings.
-          </p>
-        )}
-
         <button
           type="button"
           disabled={pending}

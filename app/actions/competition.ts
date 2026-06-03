@@ -259,7 +259,7 @@ export async function resetTournament(
 
   const { error } = await supabase
     .from("competitions")
-    .update({ status: "open" })
+    .update({ status: "open", third_place_slots: null })
     .eq("id", competitionId);
 
   if (error) return { error: error.message };

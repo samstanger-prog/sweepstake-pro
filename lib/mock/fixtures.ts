@@ -1,5 +1,9 @@
 import type { MockFixtureTemplate } from "@/lib/supabase/types";
 import { WC2026_TEAMS } from "./wc2026-teams";
+import {
+  getKnockoutAdvancement,
+  R32_SLOT_TEMPLATE,
+} from "@/lib/bracket/fifa-wc2026";
 
 const GROUPS = [
   "A",
@@ -58,47 +62,55 @@ function knockoutFixtures(startId: number): MockFixtureTemplate[] {
   const finalStart = thirdStart + 1;
   let order = 1;
 
-  for (let i = 0; i < 16; i++) {
+  for (const slot of R32_SLOT_TEMPLATE) {
+    const fixtureId = r32Start + (slot.fixtureId - R32_SLOT_TEMPLATE[0].fixtureId);
+    const adv = getKnockoutAdvancement(fixtureId);
     fixtures.push({
-      fixture_id: r32Start + i,
+      fixture_id: fixtureId,
       home_code: "TBD",
       away_code: "TBD",
       round: "Round of 32",
       knockout_order: order++,
-      next_match_fixture_id: r16Start + Math.floor(i / 2),
+      next_match_fixture_id: adv?.nextFixtureId,
     });
   }
 
   for (let i = 0; i < 8; i++) {
+    const fixtureId = r16Start + i;
+    const adv = getKnockoutAdvancement(fixtureId);
     fixtures.push({
-      fixture_id: r16Start + i,
+      fixture_id: fixtureId,
       home_code: "TBD",
       away_code: "TBD",
       round: "Round of 16",
       knockout_order: order++,
-      next_match_fixture_id: qfStart + Math.floor(i / 2),
+      next_match_fixture_id: adv?.nextFixtureId,
     });
   }
 
   for (let i = 0; i < 4; i++) {
+    const fixtureId = qfStart + i;
+    const adv = getKnockoutAdvancement(fixtureId);
     fixtures.push({
-      fixture_id: qfStart + i,
+      fixture_id: fixtureId,
       home_code: "TBD",
       away_code: "TBD",
       round: "Quarter-final",
       knockout_order: order++,
-      next_match_fixture_id: sfStart + Math.floor(i / 2),
+      next_match_fixture_id: adv?.nextFixtureId,
     });
   }
 
   for (let i = 0; i < 2; i++) {
+    const fixtureId = sfStart + i;
+    const adv = getKnockoutAdvancement(fixtureId);
     fixtures.push({
-      fixture_id: sfStart + i,
+      fixture_id: fixtureId,
       home_code: "TBD",
       away_code: "TBD",
       round: "Semi-final",
       knockout_order: order++,
-      next_match_fixture_id: finalStart,
+      next_match_fixture_id: adv?.nextFixtureId,
     });
   }
 

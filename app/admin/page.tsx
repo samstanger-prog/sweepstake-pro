@@ -2,10 +2,17 @@ import {
   AdminMatchEntry,
   type AdminMatchRow,
 } from "@/components/AdminMatchEntry";
+import {
+  AdminKnockoutSetup,
+  type QualifyingThirdRow,
+} from "@/components/AdminKnockoutSetup";
 import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
 import { AdminTestSetup } from "@/components/AdminTestSetup";
 import { GROUP_STAGE_MATCH_COUNT } from "@/lib/simulation/bracket";
+import { isThirdPlaceSlotMapComplete } from "@/lib/bracket/fifa-wc2026";
+import { getQualifyingThirdPlaceTeams } from "@/lib/simulation/standings";
+import type { ThirdPlaceSlotKey } from "@/lib/bracket/fifa-wc2026";
 import { AdminLoginForm } from "@/components/AdminLoginForm";
 import { CreateCompetitionForm } from "@/components/CreateCompetitionForm";
 import { InviteCodeCopy } from "@/components/InviteCodeCopy";
@@ -57,7 +64,7 @@ export default async function AdminPage() {
   const supabase = await createServerSupabase();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, name, invite_code, status, created_at")
+    .select("id, name, invite_code, status, created_at, third_place_slots")
     .order("created_at", { ascending: false });
 
   const latest = competitions?.[0];
@@ -72,8 +79,15 @@ export default async function AdminPage() {
   let hasFtMatches = false;
   let r32Populated = false;
   let assignedTeamIds: string[] = [];
+  let qualifyingThirds: QualifyingThirdRow[] = [];
+  let savedThirdSlots: Partial<Record<ThirdPlaceSlotKey, string>> = {};
+  let slotsComplete = false;
 
   if (latest) {
+    savedThirdSlots =
+      (latest.third_place_slots as Partial<Record<ThirdPlaceSlotKey, string>>) ??
+      {};
+    slotsComplete = isThirdPlaceSlotMapComplete(savedThirdSlots);
     const { data: participants } = await supabase
       .from("participants")
       .select(
@@ -172,6 +186,26 @@ export default async function AdminPage() {
           m.homeCode !== "TBD" &&
           m.awayCode !== "TBD"
       );
+
+    if (groupFinishedCount >= GROUP_STAGE_MATCH_COUNT) {
+      const { data: standingsRows } = await supabase
+        .from("standings")
+        .select(
+          "team_id, group_name, played, won, drawn, lost, gf, ga, gd, pts"
+        )
+        .eq("competition_id", latest.id);
+
+      const qualifying = getQualifyingThirdPlaceTeams(standingsRows ?? []);
+      qualifyingThirds = qualifying.map((t) => {
+        const team = teamMap.get(t.team_id);
+        return {
+          teamId: t.team_id,
+          name: team?.name ?? "?",
+          flag: team?.flag_emoji ?? "",
+          groupName: t.group_name,
+        };
+      });
+    }
   }
 
   return (
@@ -215,13 +249,21 @@ export default async function AdminPage() {
             hasFtMatches={hasFtMatches}
           />
           {adminMatches.length > 0 && (
+            <AdminKnockoutSetup
+              competitionId={latest.id}
+              groupFinishedCount={groupFinishedCount}
+              groupTotal={GROUP_STAGE_MATCH_COUNT}
+              qualifyingThirds={qualifyingThirds}
+              savedSlots={savedThirdSlots}
+              r32Populated={r32Populated}
+              slotsComplete={slotsComplete}
+            />
+          )}
+          {adminMatches.length > 0 && (
             <AdminMatchEntry
               competitionId={latest.id}
               matches={adminMatches}
               assignedTeamIds={assignedTeamIds}
-              groupFinishedCount={groupFinishedCount}
-              groupTotal={GROUP_STAGE_MATCH_COUNT}
-              r32Populated={r32Populated}
             />
           )}
           <AdminTestSetup

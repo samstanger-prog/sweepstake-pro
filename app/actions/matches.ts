@@ -13,7 +13,17 @@ import {
   GROUP_STAGE_MATCH_COUNT,
   getTbdTeamId,
   hasKnockoutTeamsAssigned,
+  getThirdPlaceSlots,
+  saveThirdPlaceSlots,
 } from "@/lib/simulation/bracket";
+import {
+  isThirdPlaceSlotMapComplete,
+  THIRD_PLACE_SLOT_KEYS,
+  type ThirdPlaceSlotKey,
+} from "@/lib/bracket/fifa-wc2026";
+import { getQualifyingThirdPlaceTeams, rebuildStandingsFromMatches } from "@/lib/simulation/standings";
+import { buildTeamIdsByGroup } from "@/lib/simulation/bracket";
+import type { Match } from "@/lib/supabase/types";
 import { recalculateCompetition } from "@/lib/scoring/recalculate";
 
 function revalidateCompetitionPaths() {
@@ -59,7 +69,7 @@ export async function saveMatchResult(
   ) {
     return {
       error:
-        "Cannot save knockout match until both teams are assigned. Run Fill R32 from standings first.",
+        "Cannot save knockout match until both teams are assigned. Use Knockout setup → Generate Round of 32.",
     };
   }
 
@@ -118,9 +128,68 @@ export async function saveMatchResult(
   return {
     success: true,
     warning: warnR32
-      ? "Group standings changed — consider re-running Fill R32 from standings."
+      ? "Group standings changed — re-assign third-place slots and regenerate Round of 32 in Knockout setup."
       : undefined,
   };
+}
+
+export async function saveThirdPlaceSlotAssignments(
+  competitionId: string,
+  slots: Record<ThirdPlaceSlotKey, string>
+) {
+  if (!(await isAdminAuthenticated())) {
+    return { error: "Unauthorized" };
+  }
+  if (!isSupabaseAdminConfigured()) {
+    return { error: "Database not configured." };
+  }
+
+  const finished = await countGroupStageFinished(competitionId);
+  if (finished < GROUP_STAGE_MATCH_COUNT) {
+    return {
+      error: `Group stage incomplete (${finished}/${GROUP_STAGE_MATCH_COUNT} matches finished).`,
+    };
+  }
+
+  for (const key of THIRD_PLACE_SLOT_KEYS) {
+    if (!slots[key]) {
+      return { error: `Missing assignment for slot ${key}.` };
+    }
+  }
+
+  const teamIds = Object.values(slots);
+  if (new Set(teamIds).size !== teamIds.length) {
+    return { error: "Each third-placed team can only fill one slot." };
+  }
+
+  const supabase = createAdminClient();
+  const { data: matches } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("competition_id", competitionId)
+    .eq("round", "Group Stage")
+    .eq("status", "FT");
+
+  if (!matches?.length) {
+    return { error: "No finished group matches yet." };
+  }
+
+  const teamIdsByGroup = await buildTeamIdsByGroup();
+  const standings = rebuildStandingsFromMatches(matches as Match[], teamIdsByGroup);
+  const qualifying = getQualifyingThirdPlaceTeams(standings);
+  const qualifyingIds = new Set(qualifying.map((t) => t.team_id));
+
+  for (const id of teamIds) {
+    if (!qualifyingIds.has(id)) {
+      return {
+        error: "All assigned teams must be one of the eight qualifying third-placed teams.",
+      };
+    }
+  }
+
+  await saveThirdPlaceSlots(competitionId, slots);
+  revalidateCompetitionPaths();
+  return { success: true };
 }
 
 export async function fillRoundOf32FromStandings(
@@ -141,6 +210,14 @@ export async function fillRoundOf32FromStandings(
     };
   }
 
+  const thirdSlots = await getThirdPlaceSlots(competitionId);
+  if (!isThirdPlaceSlotMapComplete(thirdSlots)) {
+    return {
+      error:
+        "Third-place slot assignments incomplete. Save all eight slot assignments first.",
+    };
+  }
+
   if (!force && (await hasKnockoutTeamsAssigned(competitionId))) {
     return {
       error: "R32 already populated. Confirm replace to run again.",
@@ -149,7 +226,13 @@ export async function fillRoundOf32FromStandings(
   }
 
   const standings = await syncGroupStandings(competitionId);
-  await fillKnockoutBracket(competitionId, standings);
+  try {
+    await fillKnockoutBracket(competitionId, standings);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to generate knockouts.",
+    };
+  }
   await recalculateCompetition(competitionId);
   revalidateCompetitionPaths();
 

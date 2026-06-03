@@ -20,6 +20,7 @@ export interface Competition {
   invite_code: string;
   status: CompetitionStatus;
   created_at: string;
+  third_place_slots?: Record<string, string> | null;
 }
 
 export interface Participant {

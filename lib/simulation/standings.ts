@@ -121,6 +121,71 @@ export function getQualifiedTeams(
   return qualified.slice(0, target);
 }
 
+/** Rank 1–4 per group (pts → GD → GF). */
+export type GroupRankMap = Map<string, Map<number, string>>;
+
+export function getGroupRanks(
+  standings: Omit<Standing, "id" | "competition_id">[]
+): GroupRankMap {
+  const byGroup = new Map<string, typeof standings>();
+  for (const s of standings) {
+    const list = byGroup.get(s.group_name) ?? [];
+    list.push(s);
+    byGroup.set(s.group_name, list);
+  }
+
+  const result: GroupRankMap = new Map();
+  for (const [group, list] of byGroup) {
+    const sorted = [...list].sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      return b.gf - a.gf;
+    });
+    const ranks = new Map<number, string>();
+    sorted.forEach((s, i) => ranks.set(i + 1, s.team_id));
+    result.set(group, ranks);
+  }
+  return result;
+}
+
+export type QualifyingThird = {
+  team_id: string;
+  group_name: string;
+  pts: number;
+  gd: number;
+  gf: number;
+};
+
+/** The eight third-placed teams that qualify for the Round of 32. */
+export function getQualifyingThirdPlaceTeams(
+  standings: Omit<Standing, "id" | "competition_id">[]
+): QualifyingThird[] {
+  const groupRanks = getGroupRanks(standings);
+  const thirds: QualifyingThird[] = [];
+
+  for (const [group, ranks] of groupRanks) {
+    const thirdId = ranks.get(3);
+    if (!thirdId) continue;
+    const s = standings.find((x) => x.team_id === thirdId);
+    if (!s) continue;
+    thirds.push({
+      team_id: thirdId,
+      group_name: group,
+      pts: s.pts,
+      gd: s.gd,
+      gf: s.gf,
+    });
+  }
+
+  return thirds
+    .sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.gd !== a.gd) return b.gd - a.gd;
+      return b.gf - a.gf;
+    })
+    .slice(0, 8);
+}
+
 /** @deprecated use getQualifiedTeams */
 export function getTopTeamsFromGroups(
   standings: Omit<Standing, "id" | "competition_id">[],
