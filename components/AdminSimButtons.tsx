@@ -12,32 +12,76 @@ type ActionResult = {
   potAEndRank?: number;
 };
 
+type ButtonDef = {
+  key: string;
+  label: string;
+  mode?: SimMode;
+  draw?: boolean;
+  warning: string;
+  needsConfirm: boolean;
+};
+
 export function AdminSimButtons({
   competitionId,
   hasFtMatches = false,
+  hasDrawn = false,
 }: {
   competitionId: string;
   hasFtMatches?: boolean;
+  hasDrawn?: boolean;
 }) {
   const router = useRouter();
+  const [confirming, setConfirming] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error";
   } | null>(null);
 
-  async function run(
-    label: string,
-    action: () => Promise<ActionResult>,
-    sim = false
-  ) {
-    if (sim && hasFtMatches) {
-      const ok = window.confirm(
-        "Simulation overwrites all match scores. Manual results will be lost. Continue?"
-      );
-      if (!ok) return;
-    }
+  const manualScoreNote = hasFtMatches
+    ? " Manual scores you entered will be lost."
+    : "";
 
+  const buttons: ButtonDef[] = [
+    {
+      key: "draw",
+      label: "Run Team Draw",
+      draw: true,
+      needsConfirm: hasDrawn,
+      warning:
+        "This replaces all team assignments with a new random draw. Players stay the same.",
+    },
+    {
+      key: "group",
+      label: "Run Group Stage Simulation",
+      mode: "group",
+      needsConfirm: true,
+      warning: `Generate group stage scores? This overwrites group match results.${manualScoreNote}`,
+    },
+    {
+      key: "knockout",
+      label: "Run Knockout Simulation",
+      mode: "knockout",
+      needsConfirm: true,
+      warning: `Generate knockout scores? This overwrites knockout match results.${manualScoreNote}`,
+    },
+    {
+      key: "full",
+      label: "Run Full Tournament Simulation",
+      mode: "full",
+      needsConfirm: true,
+      warning: `Run the full tournament simulation? All match scores will be overwritten.${manualScoreNote}`,
+    },
+    {
+      key: "fast",
+      label: "Fast Simulate (instant)",
+      mode: "fast",
+      needsConfirm: true,
+      warning: `Fast simulate every match as 2–1? All scores will be overwritten instantly.${manualScoreNote}`,
+    },
+  ];
+
+  async function run(label: string, action: () => Promise<ActionResult>) {
     setMessage(null);
     setPending(true);
     try {
@@ -53,9 +97,11 @@ export function AdminSimButtons({
           text: `Team draw complete — ${result.assigned} players assigned.${potNote}`,
           type: "success",
         });
+        setConfirming(null);
         router.refresh();
       } else {
         setMessage({ text: `${label} complete.`, type: "success" });
+        setConfirming(null);
         router.refresh();
       }
     } catch (e) {
@@ -68,13 +114,12 @@ export function AdminSimButtons({
     }
   }
 
-  const buttons: { label: string; mode?: SimMode; draw?: boolean }[] = [
-    { label: "Run Team Draw", draw: true },
-    { label: "Run Group Stage Simulation", mode: "group" },
-    { label: "Run Knockout Simulation", mode: "knockout" },
-    { label: "Run Full Tournament Simulation", mode: "full" },
-    { label: "Fast Simulate (instant)", mode: "fast" },
-  ];
+  function getAction(b: ButtonDef) {
+    return () =>
+      b.draw
+        ? runTeamDraw(competitionId)
+        : runSim(competitionId, b.mode!);
+  }
 
   return (
     <div className="space-y-2">
@@ -84,24 +129,49 @@ export function AdminSimButtons({
         </p>
       )}
       {buttons.map((b) => (
-        <button
-          key={b.label}
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            run(
-              b.label,
-              () =>
-                b.draw
-                  ? runTeamDraw(competitionId)
-                  : runSim(competitionId, b.mode!),
-              !b.draw
-            )
-          }
-          className="w-full rounded-lg bg-pitch-600 px-4 py-3 text-sm font-medium text-white hover:bg-pitch-700 disabled:opacity-50"
-        >
-          {pending ? "Working…" : b.label}
-        </button>
+        <div key={b.key}>
+          {confirming === b.key ? (
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+              <p className="text-sm text-amber-900 dark:text-amber-100">
+                {b.warning}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(b.label, getAction(b))}
+                  className="flex-1 rounded-lg bg-pitch-600 px-4 py-2 text-sm font-medium text-white hover:bg-pitch-700 disabled:opacity-50"
+                >
+                  {pending ? "Working…" : "Confirm"}
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => setConfirming(null)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm dark:border-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={pending || confirming !== null}
+              onClick={() => {
+                setMessage(null);
+                if (b.needsConfirm) {
+                  setConfirming(b.key);
+                } else {
+                  run(b.label, getAction(b));
+                }
+              }}
+              className="w-full rounded-lg bg-pitch-600 px-4 py-3 text-sm font-medium text-white hover:bg-pitch-700 disabled:opacity-50"
+            >
+              {pending ? "Working…" : b.label}
+            </button>
+          )}
+        </div>
       ))}
       {message && (
         <p

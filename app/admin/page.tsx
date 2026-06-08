@@ -272,6 +272,7 @@ export default async function AdminPage() {
           <AdminSimButtons
             competitionId={latest.id}
             hasFtMatches={hasFtMatches}
+            hasDrawn={latest.status !== "open"}
           />
           {adminMatches.length > 0 && (
             <AdminKnockoutSetup
