@@ -74,8 +74,8 @@ export function calculateTeamPoints(
 
   const teamMatches = matches.filter(
     (m) =>
-      m.status === "FT" &&
-      (m.home_team_id === teamId || m.away_team_id === teamId)
+      (m.home_team_id === teamId || m.away_team_id === teamId) &&
+      (m.status === "FT" || (m.is_live && m.home_goals !== null && m.away_goals !== null))
   );
 
   const groupMatches = teamMatches
@@ -86,12 +86,24 @@ export function calculateTeamPoints(
     const isHome = m.home_team_id === teamId;
     const goalsFor = isHome ? m.home_goals! : m.away_goals!;
     const goalsAgainst = isHome ? m.away_goals! : m.home_goals!;
+    const opponent = opponentName(m, teamId, teamMap);
+    const prefix = m.group_name ? `Group ${m.group_name}` : "Group";
+
+    if (m.is_live && m.status !== "FT") {
+      const goalPts = goalsFor * GROUP_GOAL_POINTS;
+      if (goalPts <= 0) continue;
+      matchPoints += goalPts;
+      items.push({
+        description: `${prefix} · ${scoreLine(m, teamId)} vs ${opponent} (live) — ${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalPts}`,
+        points: goalPts,
+      });
+      continue;
+    }
+
     const { total, parts } = groupMatchPoints(goalsFor, goalsAgainst);
     if (total === 0 && parts.length === 0) continue;
 
     matchPoints += total;
-    const prefix = m.group_name ? `Group ${m.group_name}` : "Group";
-    const opponent = opponentName(m, teamId, teamMap);
     const scoring = parts.length > 0 ? ` — ${parts.join(", ")}` : "";
 
     items.push({
@@ -104,13 +116,26 @@ export function calculateTeamPoints(
     .filter((m) => m.round !== "Group Stage")
     .sort((a, b) => (a.knockout_order ?? 0) - (b.knockout_order ?? 0));
 
-  const roundsPlayed = new Set(knockoutMatches.map((m) => m.round));
+  const roundsPlayed = new Set(
+    knockoutMatches.filter((m) => m.status === "FT").map((m) => m.round)
+  );
 
   for (const m of knockoutMatches) {
     const isHome = m.home_team_id === teamId;
     const goalsFor = isHome ? m.home_goals! : m.away_goals!;
     const goalPts = goalsFor * KNOCKOUT_GOAL_POINTS;
     const opponent = opponentName(m, teamId, teamMap);
+
+    if (m.is_live && m.status !== "FT") {
+      if (goalPts <= 0) continue;
+      matchPoints += goalPts;
+      items.push({
+        description: `${m.round} · ${scoreLine(m, teamId)} vs ${opponent} (live) — ${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalPts}`,
+        points: goalPts,
+      });
+      continue;
+    }
+
     const scoring =
       goalPts > 0
         ? ` — ${goalsFor} goal${goalsFor > 1 ? "s" : ""} +${goalPts}`

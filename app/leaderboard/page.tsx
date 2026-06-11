@@ -1,12 +1,9 @@
-import { LeaderboardTable, type LeaderboardEntry } from "@/components/LeaderboardTable";
-import { ParticipantTeams } from "@/components/ParticipantTeams";
+import { LiveLeaderboardShell } from "@/components/LiveLeaderboardShell";
 import { SupabaseSetupPanel } from "@/components/SupabaseSetupPanel";
+import { buildLiveLeaderboardPayload } from "@/lib/leaderboard/live-data";
+import { isWorldcup26SyncEnabled } from "@/lib/config";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
-import type { ScoreBreakdown } from "@/lib/supabase/types";
-import Link from "next/link";
-import { profilePath } from "@/lib/utils/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -54,48 +51,23 @@ export default async function LeaderboardPage({
     );
   }
 
-  const { data: rows } = await supabase
-    .from("participants")
-    .select(
-      `
-      id,
-      name,
-      slug,
-      user_teams (
-        pot,
-        teams ( name, flag_emoji, pot )
-      ),
-      participant_scores (
-        total_points,
-        breakdown
-      )
-    `
-    )
-    .eq("competition_id", competitionId);
-
   const current = competitions?.find((c) => c.id === competitionId);
-  const inviteCode = current?.invite_code ?? "";
+  const syncEnabled = isWorldcup26SyncEnabled();
 
-  const entries: LeaderboardEntry[] = (rows ?? [])
-    .map((r) => {
-      const scores = Array.isArray(r.participant_scores)
-        ? r.participant_scores[0]
-        : r.participant_scores;
-      const slug = r.slug as string | undefined;
-      return {
-        participantId: r.id,
-        name: r.name,
-        profileHref:
-          inviteCode && slug
-            ? profilePath(inviteCode, slug)
-            : `/user/${r.id}`,
-        teams: parseAssignedTeams(r.user_teams),
-        totalPoints: scores?.total_points ?? 0,
-        breakdown: scores?.breakdown as ScoreBreakdown | undefined,
-      };
-    })
-    .sort((a, b) => b.totalPoints - a.totalPoints)
-    .map((e, i) => ({ ...e, rank: i + 1 }));
+  let livePayload;
+  try {
+    livePayload = await buildLiveLeaderboardPayload(competitionId, {
+      runSync: false,
+    });
+  } catch {
+    livePayload = {
+      liveMatches: [],
+      entries: [],
+      entryHints: {},
+      lastSyncAt: null,
+      polledAt: new Date().toISOString(),
+    };
+  }
 
   return (
     <div className="space-y-6">
@@ -129,41 +101,20 @@ export default async function LeaderboardPage({
         </div>
       )}
 
-      <div className="md:hidden">
-        <LeaderboardTable entries={entries} />
-      </div>
-
-      <div className="hidden md:block overflow-x-auto card p-0">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 dark:border-slate-600">
-            <tr>
-              <th className="p-3">#</th>
-              <th className="p-3">Player</th>
-              <th className="p-3">Teams (Pot A + Pot B)</th>
-              <th className="p-3 text-right">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((e) => (
-              <tr key={e.participantId} className="border-b border-slate-100 dark:border-slate-700">
-                <td className="p-3 font-bold">{e.rank}</td>
-                <td className="p-3">
-                  <Link
-                    href={e.profileHref}
-                    className="font-medium text-pitch-700 hover:underline dark:text-pitch-400"
-                  >
-                    {e.name}
-                  </Link>
-                </td>
-                <td className="p-3">
-                  <ParticipantTeams teams={e.teams} compact />
-                </td>
-                <td className="p-3 text-right font-bold text-pitch-600">{e.totalPoints}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {livePayload.entries.length === 0 ? (
+        <p className="text-center text-slate-500 py-8">
+          No participants yet. Share the invite code.
+        </p>
+      ) : (
+        <LiveLeaderboardShell
+          competitionId={competitionId}
+          initialEntries={livePayload.entries}
+          initialHints={livePayload.entryHints}
+          initialLiveMatches={livePayload.liveMatches}
+          initialLastSyncAt={livePayload.lastSyncAt}
+          syncEnabled={syncEnabled}
+        />
+      )}
     </div>
   );
 }

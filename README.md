@@ -29,6 +29,8 @@ Private football sweepstake for up to **20 players**. Mock **48-team FIFA World 
    - [`002_participant_slug.sql`](supabase/migrations/002_participant_slug.sql)
    - [`003_rebalance_pots.sql`](supabase/migrations/003_rebalance_pots.sql) *(optional if 004 run on fresh DB)*
    - [`004_48_teams.sql`](supabase/migrations/004_48_teams.sql)
+   - [`005_third_place_slots.sql`](supabase/migrations/005_third_place_slots.sql)
+   - [`006_worldcup26_sync.sql`](supabase/migrations/006_worldcup26_sync.sql)
 3. Copy **Project URL**, **anon key**, and **service role key** from Settings → API
 
 ### 2. Environment
@@ -87,6 +89,23 @@ See **`/rules`** in the app for the full breakdown.
 **Third-place match:** goal points only (no round milestone).
 
 **Reset:** Admin → Reset tournament (type invite code) clears draw/scores but keeps players.
+
+## Live scores (worldcup26.ir)
+
+Optional sync from the free [worldcup26.ir](https://worldcup26.ir) API (same data Woody’s dashboard uses):
+
+```bash
+WORLDCUP26_SYNC_ENABLED=true
+CRON_SECRET=your-random-secret   # Vercel cron auth
+```
+
+- **Admin → Sync now** — manual pull anytime
+- **Vercel cron** — every 10 minutes (`vercel.json`)
+- **Leaderboard** — polls every 60s when enabled; shows live match strip + LIVE badges on affected players
+- Live matches award **goal points only** until full-time (no win/draw/knockout milestones yet)
+- Does **not** auto-assign third-place R32 slots — use existing Knockout setup after group stage
+
+Apply migration **`006_worldcup26_sync.sql`** (`is_live` on matches, `worldcup26_last_sync_at` on competitions).
 
 ## Deploy on Vercel
 

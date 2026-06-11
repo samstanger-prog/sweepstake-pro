@@ -16,7 +16,13 @@ export interface LeaderboardEntry {
   breakdown?: ScoreBreakdown;
 }
 
-export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
+export function LeaderboardTable({
+  entries,
+  entryHints = {},
+}: {
+  entries: LeaderboardEntry[];
+  entryHints?: Record<string, { liveLine?: string; isLive: boolean }>;
+}) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (entries.length === 0) {
@@ -29,7 +35,9 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
 
   return (
     <div className="space-y-2">
-      {entries.map((e) => (
+      {entries.map((e) => {
+        const hint = entryHints[e.participantId];
+        return (
         <div key={e.participantId} className="card">
           <button
             type="button"
@@ -60,8 +68,18 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
                 >
                   {e.name}
                 </Link>
+                {hint?.isLive && (
+                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                    Live
+                  </span>
+                )}
               </div>
               <ParticipantTeams teams={e.teams} />
+              {hint?.liveLine && (
+                <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+                  {hint.liveLine}
+                </p>
+              )}
             </div>
             <span className="shrink-0 text-xl font-bold text-pitch-600 dark:text-pitch-500">
               {e.totalPoints} pts
@@ -74,7 +92,8 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

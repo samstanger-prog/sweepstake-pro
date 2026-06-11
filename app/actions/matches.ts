@@ -108,6 +108,7 @@ export async function saveMatchResult(
       home_goals: homeGoals,
       away_goals: awayGoals,
       status: "FT",
+      is_live: false,
       winner_team_id: winnerId,
     })
     .eq("id", matchId);

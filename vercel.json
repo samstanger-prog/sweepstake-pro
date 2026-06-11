@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/worldcup26-sync",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}

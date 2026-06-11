@@ -8,6 +8,7 @@ import {
 } from "@/components/AdminKnockoutSetup";
 import { AdminResetTournament } from "@/components/AdminResetTournament";
 import { AdminSimButtons } from "@/components/AdminSimButtons";
+import { AdminWorldcup26Sync } from "@/components/AdminWorldcup26Sync";
 import { AdminTestSetup } from "@/components/AdminTestSetup";
 import { GROUP_STAGE_MATCH_COUNT } from "@/lib/simulation/bracket";
 import {
@@ -31,7 +32,7 @@ import { profilePath } from "@/lib/utils/slug";
 import { isAdminAuthenticated } from "@/lib/admin/auth";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { isMockDataEnabled } from "@/lib/config";
+import { isMockDataEnabled, isWorldcup26SyncEnabled } from "@/lib/config";
 import { isTestPlayerName } from "@/lib/test/participants";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +73,7 @@ export default async function AdminPage() {
   const supabase = await createServerSupabase();
   const { data: competitions } = await supabase
     .from("competitions")
-    .select("id, name, invite_code, status, created_at, third_place_slots")
+    .select("id, name, invite_code, status, created_at, third_place_slots, worldcup26_last_sync_at")
     .order("created_at", { ascending: false });
 
   const latest = competitions?.[0];
@@ -294,6 +295,11 @@ export default async function AdminPage() {
               assignedTeamIds={assignedTeamIds}
             />
           )}
+          <AdminWorldcup26Sync
+            competitionId={latest.id}
+            lastSyncAt={latest.worldcup26_last_sync_at ?? null}
+            syncEnabled={isWorldcup26SyncEnabled()}
+          />
           <AdminTestSetup
             competitionId={latest.id}
             participantCount={participantCount}

@@ -21,6 +21,7 @@ export interface Competition {
   status: CompetitionStatus;
   created_at: string;
   third_place_slots?: Record<string, string> | null;
+  worldcup26_last_sync_at?: string | null;
 }
 
 export interface Participant {
@@ -48,6 +49,7 @@ export interface Match {
   home_goals: number | null;
   away_goals: number | null;
   status: MatchStatus;
+  is_live?: boolean;
   round: string;
   group_name: string | null;
   knockout_order: number | null;
