@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { TeamBadge } from "@/components/TeamBadge";
+import { NextUpSection } from "@/components/NextUpSection";
 import { PointsBreakdown } from "@/components/PointsBreakdown";
+import type { TeamNextUp } from "@/lib/leaderboard/next-up";
 import { profilePath } from "@/lib/utils/slug";
 import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
 import type { AssignedTeam } from "@/components/ParticipantTeams";
@@ -38,9 +40,11 @@ export interface ProfileData {
 export function ProfileView({
   participant,
   teams: teamsProp,
+  nextUp = [],
 }: {
   participant: ProfileData;
   teams?: AssignedTeam[];
+  nextUp?: TeamNextUp[];
 }) {
   const competition = participant.competition;
   const scores = Array.isArray(participant.participant_scores)
@@ -92,6 +96,8 @@ export function ProfileView({
           Waiting for team draw. Check back after the admin runs the draw.
         </p>
       )}
+
+      {teams.length > 0 && nextUp.length > 0 && <NextUpSection items={nextUp} />}
 
       {scores ? (
         <section className="card">

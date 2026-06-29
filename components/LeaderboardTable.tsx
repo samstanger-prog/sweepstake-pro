@@ -21,7 +21,7 @@ export function LeaderboardTable({
   entryHints = {},
 }: {
   entries: LeaderboardEntry[];
-  entryHints?: Record<string, { liveLine?: string; isLive: boolean }>;
+  entryHints?: Record<string, { liveLine?: string; nextUpLines?: string[]; isLive: boolean }>;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -80,6 +80,15 @@ export function LeaderboardTable({
                   {hint.liveLine}
                 </p>
               )}
+              {!hint?.isLive &&
+                hint?.nextUpLines?.map((line) => (
+                  <p
+                    key={line}
+                    className="mt-1 text-xs text-slate-500 dark:text-slate-400"
+                  >
+                    {line}
+                  </p>
+                ))}
             </div>
             <span className="shrink-0 text-xl font-bold text-pitch-600 dark:text-pitch-500">
               {e.totalPoints} pts

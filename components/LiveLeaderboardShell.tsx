@@ -113,6 +113,15 @@ export function LiveLeaderboardShell({
                         {hint.liveLine}
                       </p>
                     )}
+                    {!hint?.isLive &&
+                      hint?.nextUpLines?.map((line) => (
+                        <p
+                          key={line}
+                          className="mt-1 text-xs text-slate-500 dark:text-slate-400"
+                        >
+                          {line}
+                        </p>
+                      ))}
                   </td>
                   <td className="p-3">
                     <ParticipantTeams teams={e.teams} compact />

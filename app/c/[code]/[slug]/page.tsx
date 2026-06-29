@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/ProfileView";
 import { SupabaseSetupPanel } from "@/components/SupabaseSetupPanel";
 import { buildAssignedTeamsWithStatus } from "@/lib/leaderboard/team-status";
+import { buildNextUpForTeams } from "@/lib/leaderboard/next-up";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Match, Team } from "@/lib/supabase/types";
@@ -78,6 +79,11 @@ export default async function ProfileBySlugPage({
     (allMatches ?? []) as Match[],
     teamMap
   );
+  const nextUp = buildNextUpForTeams(
+    teams,
+    (allMatches ?? []) as Match[],
+    teamMap
+  );
 
   const competitionInfo = Array.isArray(participant.competitions)
     ? participant.competitions[0]
@@ -90,6 +96,7 @@ export default async function ProfileBySlugPage({
         competition: competitionInfo ?? null,
       }}
       teams={teams}
+      nextUp={nextUp}
     />
   );
 }
