@@ -3,6 +3,7 @@ interface TeamBadgeProps {
   flag?: string;
   pot?: string;
   eliminated?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
@@ -11,11 +12,14 @@ export function TeamBadge({
   flag,
   pot,
   eliminated = false,
+  compact = false,
   className = "",
 }: TeamBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 ${
+        compact ? "text-xs" : "text-sm"
+      } ${
         eliminated
           ? "bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500"
           : "bg-slate-100 dark:bg-slate-700"
@@ -23,7 +27,12 @@ export function TeamBadge({
       title={eliminated ? `${name} — knocked out` : undefined}
     >
       {flag && (
-        <span className={eliminated ? "opacity-50 grayscale" : undefined}>
+        <span
+          className={`emoji-flag shrink-0 text-base ${
+            eliminated ? "opacity-50 grayscale" : ""
+          }`}
+          aria-hidden
+        >
           {flag}
         </span>
       )}
@@ -32,7 +41,9 @@ export function TeamBadge({
       </span>
       {pot && (
         <span
-          className={`text-xs ${eliminated ? "text-slate-400 line-through" : "text-slate-500"}`}
+          className={`${compact ? "text-[10px]" : "text-xs"} ${
+            eliminated ? "text-slate-400 line-through" : "text-slate-500"
+          }`}
         >
           Pot {pot}
         </span>

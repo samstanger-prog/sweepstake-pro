@@ -30,7 +30,7 @@ export function ParticipantTeams({
           flag={t.flag}
           pot={t.pot}
           eliminated={t.eliminated}
-          className={compact ? "text-xs" : ""}
+          compact={compact}
         />
       ))}
     </div>
