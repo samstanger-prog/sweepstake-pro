@@ -4,7 +4,6 @@ import { syncWorldcup26Scores } from "@/lib/worldcup26/sync-scores";
 import type { Match, ScoreBreakdown, Team } from "@/lib/supabase/types";
 import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
 import { withEliminationStatus } from "@/lib/leaderboard/team-status";
-import { buildEntryNextUpLines } from "@/lib/leaderboard/next-up";
 import { profilePath } from "@/lib/utils/slug";
 import type { LeaderboardEntry } from "@/components/LeaderboardTable";
 
@@ -24,7 +23,6 @@ export type LiveMatchRow = {
 export type LiveEntryHint = {
   participantId: string;
   liveLine?: string;
-  nextUpLines?: string[];
   isLive: boolean;
 };
 
@@ -156,16 +154,7 @@ export async function buildLiveLeaderboardPayload(
         }
       }
 
-      const nextUpLines = isLive
-        ? undefined
-        : buildEntryNextUpLines(teamsParsed, matches, teamMap);
-
-      entryHints[r.id] = {
-        participantId: r.id,
-        liveLine,
-        nextUpLines: nextUpLines?.length ? nextUpLines : undefined,
-        isLive,
-      };
+      entryHints[r.id] = { participantId: r.id, liveLine, isLive };
 
       return {
         participantId: r.id,
