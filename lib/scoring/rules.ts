@@ -20,7 +20,7 @@ export const KNOCKOUT_ROUNDS_ORDER = [
 
 export type KnockoutRound = (typeof KNOCKOUT_ROUNDS_ORDER)[number];
 
-/** Points awarded once per round the team completes a knockout fixture in (cumulative). */
+/** Points awarded once per knockout round the team reaches (cumulative). */
 export const KNOCKOUT_ROUND_POINTS: Record<KnockoutRound, number> = {
   "Round of 32": 5,
   "Round of 16": 10,

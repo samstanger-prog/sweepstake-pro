@@ -6,8 +6,35 @@ import {
   KNOCKOUT_GOAL_POINTS,
   KNOCKOUT_ROUND_POINTS,
   KNOCKOUT_ROUNDS_ORDER,
+  type KnockoutRound,
   WORLD_CUP_WINNER_BONUS,
 } from "./rules";
+
+/** Highest knockout milestone reached (bracket slot), not merely rounds with FT results. */
+function getKnockoutRoundsReached(
+  teamId: string,
+  matches: Match[]
+): KnockoutRound[] {
+  let highestIndex = -1;
+
+  for (const m of matches) {
+    if (m.home_team_id !== teamId && m.away_team_id !== teamId) continue;
+    if (m.round === "Group Stage") continue;
+
+    if (m.round === "Third-place") {
+      const sfIndex = KNOCKOUT_ROUNDS_ORDER.indexOf("Semi-final");
+      if (sfIndex > highestIndex) highestIndex = sfIndex;
+      continue;
+    }
+
+    const idx = KNOCKOUT_ROUNDS_ORDER.indexOf(m.round as KnockoutRound);
+    if (idx >= 0 && idx > highestIndex) highestIndex = idx;
+  }
+
+  if (highestIndex < 0) return [];
+
+  return KNOCKOUT_ROUNDS_ORDER.slice(0, highestIndex + 1);
+}
 
 function opponentName(
   match: Match,
@@ -116,10 +143,6 @@ export function calculateTeamPoints(
     .filter((m) => m.round !== "Group Stage")
     .sort((a, b) => (a.knockout_order ?? 0) - (b.knockout_order ?? 0));
 
-  const roundsPlayed = new Set(
-    knockoutMatches.filter((m) => m.status === "FT").map((m) => m.round)
-  );
-
   for (const m of knockoutMatches) {
     const isHome = m.home_team_id === teamId;
     const goalsFor = isHome ? m.home_goals! : m.away_goals!;
@@ -148,11 +171,8 @@ export function calculateTeamPoints(
     });
   }
 
-  for (const roundName of KNOCKOUT_ROUNDS_ORDER) {
-    if (!roundsPlayed.has(roundName)) continue;
-    const pts =
-      KNOCKOUT_ROUND_POINTS[roundName as keyof typeof KNOCKOUT_ROUND_POINTS];
-    if (!pts) continue;
+  for (const roundName of getKnockoutRoundsReached(teamId, matches)) {
+    const pts = KNOCKOUT_ROUND_POINTS[roundName];
     progressionPoints += pts;
     items.push({
       description: `Reached ${roundName} (cumulative)`,
