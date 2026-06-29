@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWorldcup26SyncEnabled } from "@/lib/config";
 import { syncWorldcup26Scores } from "@/lib/worldcup26/sync-scores";
-import type { ScoreBreakdown, Team } from "@/lib/supabase/types";
+import type { Match, ScoreBreakdown, Team } from "@/lib/supabase/types";
 import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
+import { withEliminationStatus } from "@/lib/leaderboard/team-status";
 import { profilePath } from "@/lib/utils/slug";
 import type { LeaderboardEntry } from "@/components/LeaderboardTable";
 
@@ -66,6 +67,13 @@ export async function buildLiveLeaderboardPayload(
   const { data: teams } = await supabase.from("teams").select("*");
   const teamMap = new Map((teams ?? []).map((t) => [t.id, t as Team]));
 
+  const { data: allMatches } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("competition_id", competitionId);
+
+  const matches = (allMatches ?? []) as Match[];
+
   const { data: liveRows } = await supabase
     .from("matches")
     .select(
@@ -126,7 +134,11 @@ export async function buildLiveLeaderboardPayload(
         ? r.participant_scores[0]
         : r.participant_scores;
       const slug = r.slug as string | undefined;
-      const teamsParsed = parseAssignedTeams(r.user_teams);
+      const teamsParsed = withEliminationStatus(
+        parseAssignedTeams(r.user_teams),
+        matches,
+        teamMap
+      );
 
       let liveLine: string | undefined;
       let isLive = false;

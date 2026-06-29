@@ -15,6 +15,7 @@ const PROFILE_SELECT = `
   competitions (name, invite_code, status),
   user_teams (
     pot,
+    team_id,
     teams (id, name, flag_emoji, pot)
   ),
   participant_scores (

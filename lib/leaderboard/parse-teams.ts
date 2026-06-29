@@ -2,9 +2,10 @@ import type { AssignedTeam } from "@/components/ParticipantTeams";
 
 type UserTeamRow = {
   pot: string;
+  team_id?: string;
   teams:
-    | { name: string; flag_emoji: string; pot: string }
-    | { name: string; flag_emoji: string; pot: string }[]
+    | { id?: string; name: string; flag_emoji: string; pot: string }
+    | { id?: string; name: string; flag_emoji: string; pot: string }[]
     | null;
 };
 
@@ -15,7 +16,10 @@ export function parseAssignedTeams(userTeams: UserTeamRow[] | null | undefined):
     .map((ut) => {
       const team = Array.isArray(ut.teams) ? ut.teams[0] : ut.teams;
       if (!team) return null;
+      const teamId = ut.team_id ?? team.id;
+      if (!teamId) return null;
       return {
+        teamId,
         name: team.name,
         flag: team.flag_emoji,
         pot: ut.pot,

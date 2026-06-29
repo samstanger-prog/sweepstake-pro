@@ -1,9 +1,11 @@
 import { TeamBadge } from "./TeamBadge";
 
 export interface AssignedTeam {
+  teamId: string;
   name: string;
   flag: string;
   pot: string;
+  eliminated?: boolean;
 }
 
 export function ParticipantTeams({
@@ -23,10 +25,11 @@ export function ParticipantTeams({
     <div className={`flex flex-wrap gap-1 ${compact ? "" : "mt-1.5"}`}>
       {teams.map((t) => (
         <TeamBadge
-          key={`${t.name}-${t.pot}`}
+          key={`${t.teamId}-${t.pot}`}
           name={t.name}
           flag={t.flag}
           pot={t.pot}
+          eliminated={t.eliminated}
           className={compact ? "text-xs" : ""}
         />
       ))}

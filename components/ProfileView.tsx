@@ -3,6 +3,7 @@ import { TeamBadge } from "@/components/TeamBadge";
 import { PointsBreakdown } from "@/components/PointsBreakdown";
 import { profilePath } from "@/lib/utils/slug";
 import { parseAssignedTeams } from "@/lib/leaderboard/parse-teams";
+import type { AssignedTeam } from "@/components/ParticipantTeams";
 import type { ScoreBreakdown } from "@/lib/supabase/types";
 
 export interface ProfileData {
@@ -34,13 +35,19 @@ export interface ProfileData {
     | null;
 }
 
-export function ProfileView({ participant }: { participant: ProfileData }) {
+export function ProfileView({
+  participant,
+  teams: teamsProp,
+}: {
+  participant: ProfileData;
+  teams?: AssignedTeam[];
+}) {
   const competition = participant.competition;
   const scores = Array.isArray(participant.participant_scores)
     ? participant.participant_scores[0]
     : participant.participant_scores;
   const breakdown = scores?.breakdown as ScoreBreakdown | undefined;
-  const teams = parseAssignedTeams(participant.user_teams);
+  const teams = teamsProp ?? parseAssignedTeams(participant.user_teams);
   const sharePath =
     competition && participant.slug
       ? profilePath(competition.invite_code, participant.slug)
@@ -75,6 +82,7 @@ export function ProfileView({ participant }: { participant: ProfileData }) {
                 name={t.name}
                 flag={t.flag}
                 pot={t.pot}
+                eliminated={t.eliminated}
               />
             ))}
           </div>

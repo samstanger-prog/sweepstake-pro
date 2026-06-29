@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/ProfileView";
 import { SupabaseSetupPanel } from "@/components/SupabaseSetupPanel";
+import { buildAssignedTeamsWithStatus } from "@/lib/leaderboard/team-status";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import type { Match, Team } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ const PROFILE_SELECT = `
   competitions (name, invite_code, status),
   user_teams (
     pot,
+    team_id,
     teams (id, name, flag_emoji, pot)
   ),
   participant_scores (
@@ -61,6 +64,21 @@ export default async function ProfileBySlugPage({
 
   if (!participant) notFound();
 
+  const [{ data: allTeams }, { data: allMatches }] = await Promise.all([
+    supabase.from("teams").select("*"),
+    supabase
+      .from("matches")
+      .select("*")
+      .eq("competition_id", competition.id),
+  ]);
+
+  const teamMap = new Map((allTeams ?? []).map((t) => [t.id, t as Team]));
+  const teams = buildAssignedTeamsWithStatus(
+    participant.user_teams,
+    (allMatches ?? []) as Match[],
+    teamMap
+  );
+
   const competitionInfo = Array.isArray(participant.competitions)
     ? participant.competitions[0]
     : participant.competitions;
@@ -71,6 +89,7 @@ export default async function ProfileBySlugPage({
         ...participant,
         competition: competitionInfo ?? null,
       }}
+      teams={teams}
     />
   );
 }
