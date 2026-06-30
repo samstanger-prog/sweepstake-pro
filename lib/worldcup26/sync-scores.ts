@@ -12,6 +12,7 @@ import {
   isGameFinished,
   isGameLive,
   parseGameScores,
+  parsePenaltyScores,
 } from "./fetch-games";
 import { buildTeamLookup, resolveTeamId } from "./team-names";
 import type { Worldcup26Game } from "./types";
@@ -48,6 +49,65 @@ function orientScores(
     return { homeGoals: apiAwayGoals, awayGoals: apiHomeGoals };
   }
   return { homeGoals: apiHomeGoals, awayGoals: apiAwayGoals };
+}
+
+function orientPenaltyScores(
+  dbMatch: Match,
+  apiHomeId: string,
+  apiAwayId: string,
+  apiHomePens: number,
+  apiAwayPens: number
+): { homePens: number; awayPens: number } {
+  if (
+    dbMatch.home_team_id === apiHomeId &&
+    dbMatch.away_team_id === apiAwayId
+  ) {
+    return { homePens: apiHomePens, awayPens: apiAwayPens };
+  }
+  if (
+    dbMatch.home_team_id === apiAwayId &&
+    dbMatch.away_team_id === apiHomeId
+  ) {
+    return { homePens: apiAwayPens, awayPens: apiHomePens };
+  }
+  return { homePens: apiHomePens, awayPens: apiAwayPens };
+}
+
+/** Regulation + penalty shootout winner for sync (null = skip until pens known). */
+function resolveSyncWinnerId(
+  match: Match,
+  homeGoals: number,
+  awayGoals: number,
+  game: Worldcup26Game,
+  apiHomeId: string,
+  apiAwayId: string
+): string | null {
+  const isKnockout = match.round !== "Group Stage";
+
+  if (homeGoals !== awayGoals || !isKnockout) {
+    return getWinner(
+      homeGoals,
+      awayGoals,
+      match.home_team_id,
+      match.away_team_id
+    );
+  }
+
+  const apiPens = parsePenaltyScores(game);
+  if (!apiPens || apiPens.home === apiPens.away) {
+    return null;
+  }
+
+  const { homePens, awayPens } = orientPenaltyScores(
+    match,
+    apiHomeId,
+    apiAwayId,
+    apiPens.home,
+    apiPens.away
+  );
+
+  if (homePens === awayPens) return null;
+  return homePens > awayPens ? match.home_team_id : match.away_team_id;
 }
 
 function findGroupMatch(
@@ -94,6 +154,9 @@ async function applyFinishedMatch(
   match: Match,
   homeGoals: number,
   awayGoals: number,
+  game: Worldcup26Game,
+  apiHomeId: string,
+  apiAwayId: string,
   tbdId: string | null
 ) {
   const supabase = createAdminClient();
@@ -107,36 +170,21 @@ async function applyFinishedMatch(
     return false;
   }
 
-  let winnerId: string;
-  if (homeGoals === awayGoals) {
-    if (!isKnockout) {
-      winnerId = getWinner(
-        homeGoals,
-        awayGoals,
-        match.home_team_id,
-        match.away_team_id
-      );
-    } else {
-      winnerId = getWinner(
-        homeGoals,
-        awayGoals,
-        match.home_team_id,
-        match.away_team_id
-      );
-    }
-  } else {
-    winnerId = getWinner(
-      homeGoals,
-      awayGoals,
-      match.home_team_id,
-      match.away_team_id
-    );
-  }
+  const winnerId = resolveSyncWinnerId(
+    match,
+    homeGoals,
+    awayGoals,
+    game,
+    apiHomeId,
+    apiAwayId
+  );
+  if (!winnerId) return false;
 
   const alreadyFt =
     match.status === "FT" &&
     match.home_goals === homeGoals &&
     match.away_goals === awayGoals &&
+    match.winner_team_id === winnerId &&
     !match.is_live;
 
   if (alreadyFt) return false;
@@ -278,6 +326,9 @@ export async function syncWorldcup26Scores(
         dbMatch,
         homeGoals,
         awayGoals,
+        game,
+        homeId,
+        awayId,
         tbdId
       );
       if (changed) {

@@ -45,6 +45,23 @@ export function parseGameScores(game: Worldcup26Game): {
   };
 }
 
+function parsePenaltyField(value: string | undefined): number | null {
+  if (!value || value === "null") return null;
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Penalty shootout scores when provided by the API (null if not decided on pens yet). */
+export function parsePenaltyScores(game: Worldcup26Game): {
+  home: number;
+  away: number;
+} | null {
+  const home = parsePenaltyField(game.home_penalty_score);
+  const away = parsePenaltyField(game.away_penalty_score);
+  if (home === null || away === null) return null;
+  return { home, away };
+}
+
 export function isGameFinished(game: Worldcup26Game): boolean {
   return game.finished?.toUpperCase() === "TRUE";
 }
